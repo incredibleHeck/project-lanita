@@ -114,8 +114,48 @@ export class AllocationsService {
         }
       },
       orderBy: {
-        createdAt: 'desc' // or by academic year
+        createdAt: 'desc'
       }
     });
+  }
+
+  async findOne(id: string) {
+    const allocation = await this.prisma.subjectAllocation.findUnique({
+      where: { id },
+      include: {
+        section: {
+          select: {
+            id: true,
+            name: true,
+            class: {
+              select: {
+                name: true,
+                code: true
+              }
+            }
+          }
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        },
+        academicYear: {
+          select: {
+            name: true,
+            startDate: true,
+            endDate: true
+          }
+        }
+      }
+    });
+
+    if (!allocation) {
+      throw new NotFoundException('Allocation not found');
+    }
+
+    return allocation;
   }
 }

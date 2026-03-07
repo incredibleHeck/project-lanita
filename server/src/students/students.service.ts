@@ -70,6 +70,9 @@ export class StudentsService {
         });
 
         // Step C: Create StudentRecord
+        if (!createStudentDto.sectionId) {
+          throw new Error('Section ID is required');
+        }
         await tx.studentRecord.create({
           data: {
             userId: user.id,
@@ -92,37 +95,78 @@ export class StudentsService {
     }
   }
 
-  async findAll(filters: { classId?: string; sectionId?: string }) {
+  async findAll(filters: { classId?: string; sectionId?: string; page?: number; limit?: number; search?: string }) {
+    const { page = 1, limit = 10, search } = filters;
+    const skip = (page - 1) * limit;
+
     const whereClause: any = {
       role: UserRole.STUDENT,
     };
 
     if (filters.sectionId) {
       whereClause.studentRecord = {
+        ...whereClause.studentRecord,
         currentSectionId: filters.sectionId,
       };
     } else if (filters.classId) {
       whereClause.studentRecord = {
+        ...whereClause.studentRecord,
         currentSection: {
           classId: filters.classId,
         },
       };
     }
 
-    return this.prisma.user.findMany({
-      where: whereClause,
-      include: {
-        profile: true,
-        studentRecord: {
-          include: {
-            currentSection: true,
+    if (search) {
+      whereClause.OR = [
+        {
+          profile: {
+            firstName: { contains: search, mode: 'insensitive' },
           },
         },
+        {
+          profile: {
+            lastName: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          studentRecord: {
+            admissionNumber: { contains: search, mode: 'insensitive' },
+          },
+        },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        include: {
+          profile: true,
+          studentRecord: {
+            include: {
+              currentSection: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      }),
+      this.prisma.user.count({ where: whereClause }),
+    ]);
+
+    const lastPage = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        lastPage,
       },
-      orderBy: {
-        lastName: 'asc', // Or createdAt
-      },
-    });
+    };
   }
 
   async findOne(id: string) {

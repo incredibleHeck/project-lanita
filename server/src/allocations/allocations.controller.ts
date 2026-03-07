@@ -18,22 +18,23 @@ export class AllocationsController {
   }
 
   @Get('teacher/:teacherId')
-  // Accessible by Admin and the Teacher themselves
-  // We can't easily express "Self or Admin" with simple Roles decorator.
-  // We need custom logic inside method.
   async findByTeacher(@Param('teacherId') teacherId: string, @Request() req) {
     const user = req.user;
     
-    // Allow Admins
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
       return this.allocationsService.findAllByTeacher(teacherId);
     }
 
-    // Allow Self
-    if (user.sub === teacherId || user.id === teacherId) { // Check which field holds ID (usually sub in JWT)
+    if (user.sub === teacherId || user.id === teacherId) {
        return this.allocationsService.findAllByTeacher(teacherId);
     }
 
     throw new ForbiddenException('You can only view your own schedule');
+  }
+
+  @Get(':id')
+  @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  findOne(@Param('id') id: string) {
+    return this.allocationsService.findOne(id);
   }
 }

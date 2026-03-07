@@ -1,8 +1,14 @@
-import { PrismaClient, UserRole, AttendanceStatus } from '@prisma/client';
+import { PrismaClient, UserRole, AttendanceStatus, Subject, User, StudentRecord } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import { faker } from '@faker-js/faker';
 import * as argon2 from 'argon2';
 
-const prisma = new PrismaClient();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('Seeding started...');
@@ -56,7 +62,7 @@ async function main() {
 
   // Step 4: Create Subjects
   const subjectsData = ['Mathematics', 'English', 'Science', 'History', 'Computing'];
-  const createdSubjects = [];
+  const createdSubjects: Subject[] = [];
   for (const name of subjectsData) {
     const subject = await prisma.subject.create({
       data: {
@@ -105,7 +111,7 @@ async function main() {
 
   // Step 6: Create Teachers
   const teacherPassword = await argon2.hash('Teacher@123');
-  const teachers = [];
+  const teachers: User[] = [];
   for (let i = 1; i <= 5; i++) {
     const teacher = await prisma.user.create({
       data: {
@@ -152,9 +158,31 @@ async function main() {
   });
   console.log('Allocation created: Teacher 2 -> English -> Grade 10-A');
 
-  // Step 8: Create Students
+  // Step 8: Create Parents
+  const parentPassword = await argon2.hash('Parent@123');
+  const parent1 = await prisma.user.create({
+    data: {
+      email: 'parent1@heckteck.com',
+      passwordHash: parentPassword,
+      role: UserRole.PARENT,
+      isActive: true,
+      profile: {
+        create: {
+          firstName: 'John',
+          lastName: 'Smith',
+          gender: 'MALE',
+          dob: new Date('1980-05-15'),
+          contactNumber: '+233244123456',
+          address: { city: 'Accra', country: 'Ghana' },
+        },
+      },
+    },
+  });
+  console.log('Parent created: parent1@heckteck.com');
+
+  // Step 9: Create Students
   const studentPassword = await argon2.hash('Student@123');
-  const studentRecords = [];
+  const studentRecords: StudentRecord[] = [];
 
   for (let i = 1; i <= 50; i++) {
     const sectionId = i <= 25 ? grade10SectionAId : grade11SectionBId;
@@ -185,13 +213,16 @@ async function main() {
         admissionNumber,
         enrollmentDate: new Date(),
         currentSectionId: sectionId,
+        // Link first 3 students to parent1
+        parentId: i <= 3 ? parent1.id : undefined,
       },
     });
     studentRecords.push(studentRecord);
   }
   console.log('50 Students created and assigned to sections.');
+  console.log('First 3 students linked to parent1@heckteck.com');
 
-  // Step 9: Attendance (First 5 students, Today, Math 10-A)
+  // Step 10: Attendance (First 5 students, Today, Math 10-A)
   const today = new Date();
   for (let i = 0; i < 5; i++) {
     await prisma.attendanceRecord.create({
@@ -206,7 +237,7 @@ async function main() {
   }
   console.log('Attendance marked for 5 students.');
 
-  // Step 10: Results (Exam Mid-Term 1)
+  // Step 11: Results (Exam Mid-Term 1)
   const exam = await prisma.exam.create({
     data: {
       name: 'Mid-Term 1',
@@ -250,4 +281,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

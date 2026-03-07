@@ -29,8 +29,17 @@ export class StudentsController {
   findAll(
     @Query('classId') classId?: string,
     @Query('sectionId') sectionId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
-    return this.studentsService.findAll({ classId, sectionId });
+    return this.studentsService.findAll({
+      classId,
+      sectionId,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      search,
+    });
   }
 
   @Get(':id')

@@ -70,7 +70,7 @@ export class ReportsService {
     return {
       student: {
         id: studentRecord.user.id,
-        name: `${studentRecord.user.profile.firstName} ${studentRecord.user.profile.lastName}`,
+        name: `${studentRecord.user.profile?.firstName ?? ''} ${studentRecord.user.profile?.lastName ?? ''}`,
         admissionNumber: studentRecord.admissionNumber,
         class: `${studentRecord.currentSection.class.name} - ${studentRecord.currentSection.name}`,
       },

@@ -1,23 +1,54 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: sms_postgres
-    restart: always
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: lanita-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: lanita
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-  redis:
-    image: redis:alpine
-    container_name: sms_redis
-    restart: always
+  # NestJS Backend
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lanita-server
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/lanita
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-in-production}
+      NODE_ENV: ${NODE_ENV:-development}
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${API_PORT:-4001}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Next.js Frontend
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: lanita-client
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:4001}
+    ports:
+      - "${WEB_PORT:-4000}:3001"
+    depends_on:
+      - server
+    restart: unless-stopped
 
 volumes:
   postgres_data:

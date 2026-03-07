@@ -15,6 +15,8 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { ExamsModule } from './exams/exams.module';
 import { ResultsModule } from './results/results.module';
 import { ReportsModule } from './reports/reports.module';
+import { PortalModule } from './portal/portal.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { ReportsModule } from './reports/reports.module';
     ExamsModule,
     ResultsModule,
     ReportsModule,
+    PortalModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

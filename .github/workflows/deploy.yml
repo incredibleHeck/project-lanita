@@ -1,0 +1,84 @@
+# =============================================================================
+# HeckTeck SMS - CI/CD Deployment Pipeline
+# =============================================================================
+# This workflow automatically deploys the application to your VPS when you
+# push to the main branch.
+#
+# GITHUB SECRETS SETUP (Required):
+# Go to your GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+#
+# 1. VPS_HOST     - Your VPS IP address or domain (e.g., 192.168.1.100)
+# 2. VPS_USER     - SSH username (usually 'root' or 'ubuntu')
+# 3. VPS_SSH_KEY  - Your private SSH key (the content of ~/.ssh/id_rsa or id_ed25519)
+#                   Generate with: ssh-keygen -t ed25519 -C "github-actions"
+#                   Add public key to VPS: ~/.ssh/authorized_keys
+#
+# OPTIONAL SECRETS (for production):
+# 4. POSTGRES_PASSWORD   - Database password
+# 5. JWT_SECRET          - JWT signing key
+# 6. JWT_REFRESH_SECRET  - JWT refresh token key
+# =============================================================================
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to project directory
+            cd /var/www/heckteck-sms || { echo "❌ Project directory not found"; exit 1; }
+            
+            # Pull latest code from main branch
+            echo "📥 Pulling latest code..."
+            git pull origin main
+            
+            # Memory Safeguard for 1GB RAM Free-Tier VPS
+            # Creates 2GB swap file to prevent Out-Of-Memory crashes during Docker builds
+            echo "💾 Setting up swap space..."
+            sudo fallocate -l 2G /swapfile || true
+            sudo chmod 600 /swapfile || true
+            sudo mkswap /swapfile || true
+            sudo swapon /swapfile || true
+            
+            # Show current memory status
+            free -h
+            
+            # Stop old containers and rebuild
+            echo "🐳 Rebuilding and starting containers..."
+            docker-compose -f docker-compose.yml down --remove-orphans || true
+            docker-compose -f docker-compose.yml up -d --build
+            
+            # Wait for database to be healthy
+            echo "⏳ Waiting for database to be ready..."
+            sleep 10
+            
+            # Run Prisma migrations
+            echo "🔄 Running database migrations..."
+            docker exec -t lanita-server npx prisma migrate deploy
+            
+            # Cleanup unused Docker resources to save disk space
+            echo "🧹 Cleaning up unused Docker resources..."
+            docker system prune -f || true
+            
+            # Show running containers
+            echo "✅ Deployment complete! Running containers:"
+            docker ps
