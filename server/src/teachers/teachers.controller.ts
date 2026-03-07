@@ -1,0 +1,35 @@
+import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { UserRole } from '@prisma/client';
+import { TeachersService } from './teachers.service';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+
+@ApiTags('Teachers')
+@ApiBearerAuth()
+@Controller('teachers')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+export class TeachersController {
+  constructor(private readonly teachersService: TeachersService) {}
+
+  @Get()
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.teachersService.findAll({
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      search,
+    });
+  }
+
+  @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  findOne(@Param('id') id: string) {
+    return this.teachersService.findOne(id);
+  }
+}

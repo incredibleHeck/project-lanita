@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { AuthDto, CreateUserDto } from './dto/auth-dto';
 import { UserRole, Gender } from '@prisma/client';
 
@@ -55,10 +56,11 @@ export class AuthService {
   }
 
   async signup(dto: CreateUserDto) {
-    // Check if user exists
-    const userExists = await this.prisma.user.findUnique({
+    const schoolId = getTenantSchoolId();
+    const userExists = await this.prisma.user.findFirst({
       where: {
         email: dto.email,
+        ...(schoolId && { schoolId }),
       },
     });
 
@@ -70,8 +72,9 @@ export class AuthService {
 
     // Create User and Profile in transaction
     const newUser = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
+      const user = await (tx as any).user.create({
         data: {
+          ...(schoolId && { schoolId }),
           email: dto.email,
           passwordHash,
           role: dto.role || UserRole.STUDENT,
@@ -100,9 +103,11 @@ export class AuthService {
   }
 
   async signin(dto: AuthDto) {
-    const user = await this.prisma.user.findUnique({
+    const schoolId = getTenantSchoolId();
+    const user = await this.prisma.user.findFirst({
       where: {
         email: dto.email,
+        ...(schoolId && { schoolId }),
       },
     });
 
@@ -118,5 +123,32 @@ export class AuthService {
     const tokens = await this.getTokens(user.id, user.email, user.role);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
     return tokens;
+  }
+
+  async refreshTokens(userId: string, refreshToken: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.refreshToken) {
+      throw new ForbiddenException('Access Denied');
+    }
+
+    const tokenMatches = await argon2.verify(user.refreshToken, refreshToken);
+    if (!tokenMatches) {
+      throw new ForbiddenException('Access Denied');
+    }
+
+    const tokens = await this.getTokens(user.id, user.email, user.role);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+    return tokens;
+  }
+
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+    return { message: 'Logged out successfully' };
   }
 }

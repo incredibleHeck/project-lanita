@@ -12,8 +12,11 @@ import {
   BookOpen,
   Award,
   CalendarCheck,
-  CreditCard,
   ShieldAlert,
+  Wallet,
+  Calendar,
+  MessageSquare,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,9 +53,24 @@ const adminNavigation = [
     icon: FileText,
   },
   {
+    name: "Billing",
+    href: "/admin/billing",
+    icon: Wallet,
+  },
+  {
+    name: "Timetable",
+    href: "/admin/timetable",
+    icon: Calendar,
+  },
+  {
     name: "Analytics",
     href: "/admin/analytics",
     icon: ShieldAlert,
+  },
+  {
+    name: "Announcements",
+    href: "/announcements",
+    icon: Megaphone,
   },
 ];
 
@@ -66,6 +84,16 @@ const teacherNavigation = [
     name: "My Classes",
     href: "/teacher/classes",
     icon: BookOpen,
+  },
+  {
+    name: "Messages",
+    href: "/messages",
+    icon: MessageSquare,
+  },
+  {
+    name: "Announcements",
+    href: "/announcements",
+    icon: Megaphone,
   },
 ];
 
@@ -85,6 +113,16 @@ const studentNavigation = [
     href: "/student/attendance",
     icon: CalendarCheck,
   },
+  {
+    name: "My Fees",
+    href: "/student/billing",
+    icon: Wallet,
+  },
+  {
+    name: "Announcements",
+    href: "/announcements",
+    icon: Megaphone,
+  },
 ];
 
 const parentNavigation = [
@@ -94,9 +132,19 @@ const parentNavigation = [
     icon: Users,
   },
   {
-    name: "Fees/Billing",
+    name: "Fees & Payments",
     href: "/parent/billing",
-    icon: CreditCard,
+    icon: Wallet,
+  },
+  {
+    name: "Messages",
+    href: "/messages",
+    icon: MessageSquare,
+  },
+  {
+    name: "Announcements",
+    href: "/announcements",
+    icon: Megaphone,
   },
 ];
 

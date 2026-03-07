@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { AttendanceStatus } from '@prisma/client';
 
 export class AttendanceRecordDto {
@@ -29,4 +29,8 @@ export class CreateAttendanceBatchDto {
   @ValidateNested({ each: true })
   @Type(() => AttendanceRecordDto)
   records: AttendanceRecordDto[];
+
+  @IsNumber()
+  @IsOptional()
+  offlineTimestamp?: number;
 }

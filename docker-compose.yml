@@ -1,4 +1,12 @@
 services:
+  # Redis for Bull Queue
+  redis:
+    image: redis:7-alpine
+    container_name: lanita-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    restart: unless-stopped
+
   # PostgreSQL Database
   db:
     image: postgres:16-alpine
@@ -29,11 +37,20 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-in-production}
       NODE_ENV: ${NODE_ENV:-development}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ML_SERVICE_URL: http://ml-service:5000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
     ports:
       - "${API_PORT:-4001}:3000"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
 
   # Next.js Frontend
@@ -50,5 +67,25 @@ services:
       - server
     restart: unless-stopped
 
+  # Python ML Microservice
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: lanita-ml
+    environment:
+      MODEL_PATH: /app/trained_models/dropout_classifier.pkl
+    ports:
+      - "${ML_PORT:-5000}:5000"
+    volumes:
+      - ml_models:/app/trained_models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  ml_models:

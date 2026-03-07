@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Users, UserCheck, Calendar, Clock } from "lucide-react";
 import api from "@/lib/axios";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,6 +11,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AttendanceChart } from "@/components/dashboard/attendance-chart";
 import { DistributionChart } from "@/components/dashboard/distribution-chart";
+
+interface DashboardStats {
+  totalStudents: number;
+  totalTeachers: number;
+  currentTerm: string;
+  weeklyAttendance: Array<{ day: string; present: number; absent: number }>;
+  distributionByClass: Array<{ name: string; value: number }>;
+}
 
 interface Student {
   id: string;
@@ -21,25 +30,9 @@ interface Student {
   };
 }
 
-interface AcademicYear {
-  id: string;
-  name: string;
-  isCurrent: boolean;
-}
-
-interface DashboardStats {
-  totalStudents: number;
-  totalTeachers: number;
-  currentTerm: string;
-  recentStudents: Student[];
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -57,50 +50,28 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (user?.role === "STUDENT" || user?.role === "TEACHER" || user?.role === "PARENT") return;
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
-    async function fetchDashboardData() {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    queryKey: ["analytics", "dashboard"],
+    queryFn: async () => {
+      const res = await api.get<DashboardStats>("/analytics/dashboard");
+      return res.data;
+    },
+    enabled: isAdmin,
+  });
 
-        // Fetch data in parallel
-        const [studentsRes, academicYearRes] = await Promise.all([
-          api.get("/students"),
-          api.get("/academic-year"),
-        ]);
+  const { data: recentStudentsData, isLoading: studentsLoading } = useQuery({
+    queryKey: ["students", "recent"],
+    queryFn: async () => {
+      const res = await api.get("/students", { params: { page: 1, limit: 5 } });
+      return res.data;
+    },
+    enabled: isAdmin,
+  });
 
-        const studentsResponse = studentsRes.data;
-        const students: Student[] = studentsResponse.data || [];
-        const totalStudents = studentsResponse.meta?.total || students.length;
-        const academicYears: AcademicYear[] = academicYearRes.data;
-
-        // Find current academic year
-        const currentYear = academicYears.find((year) => year.isCurrent);
-
-        // Get recent students (last 5 by creation date)
-        const recentStudents = [...students]
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 5);
-
-        setStats({
-          totalStudents,
-          totalTeachers: 5, // From seed data - would need a teachers endpoint
-          currentTerm: currentYear?.name || "N/A",
-          recentStudents,
-        });
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-        setError("Failed to load dashboard data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchDashboardData();
-  }, [authLoading, user]);
+  const isLoading = statsLoading || studentsLoading;
+  const recentStudents: Student[] = recentStudentsData?.data || [];
 
   const getInitials = (student: Student) => {
     if (student.profile) {
@@ -124,7 +95,7 @@ export default function DashboardPage() {
     });
   };
 
-  if (authLoading || user?.role === "STUDENT" || user?.role === "TEACHER" || user?.role === "PARENT") {
+  if (authLoading || !isAdmin) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -132,25 +103,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-destructive">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 text-sm text-primary hover:underline"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
@@ -158,9 +112,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Total Students */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Students</CardTitle>
@@ -170,13 +122,12 @@ export default function DashboardPage() {
             {isLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.totalStudents}</div>
+              <div className="text-2xl font-bold">{stats?.totalStudents ?? 0}</div>
             )}
             <p className="text-xs text-muted-foreground">Enrolled students</p>
           </CardContent>
         </Card>
 
-        {/* Active Teachers */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
@@ -186,13 +137,12 @@ export default function DashboardPage() {
             {isLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.totalTeachers}</div>
+              <div className="text-2xl font-bold">{stats?.totalTeachers ?? 0}</div>
             )}
             <p className="text-xs text-muted-foreground">Teaching staff</p>
           </CardContent>
         </Card>
 
-        {/* Current Term */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Term</CardTitle>
@@ -202,20 +152,24 @@ export default function DashboardPage() {
             {isLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.currentTerm}</div>
+              <div className="text-2xl font-bold">{stats?.currentTerm ?? "N/A"}</div>
             )}
             <p className="text-xs text-muted-foreground">Academic year</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Section */}
       <div className="grid gap-4 md:grid-cols-2">
-        <AttendanceChart />
-        <DistributionChart />
+        <AttendanceChart
+          data={stats?.weeklyAttendance}
+          isLoading={statsLoading}
+        />
+        <DistributionChart
+          data={stats?.distributionByClass}
+          isLoading={statsLoading}
+        />
       </div>
 
-      {/* Recent Activity */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -236,13 +190,13 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          ) : stats?.recentStudents.length === 0 ? (
+          ) : recentStudents.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No students found.
             </p>
           ) : (
             <div className="space-y-4">
-              {stats?.recentStudents.map((student) => (
+              {recentStudents.map((student) => (
                 <div
                   key={student.id}
                   className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent/50 transition-colors"

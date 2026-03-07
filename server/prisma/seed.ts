@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, AttendanceStatus, Subject, User, StudentRecord } from '@prisma/client';
+import { PrismaClient, UserRole, AttendanceStatus, Subject, User, StudentRecord, InvoiceStatus, PaymentMethod, Class } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { faker } from '@faker-js/faker';
@@ -15,10 +15,14 @@ async function main() {
 
   // Step 1: Cleanup
   console.log('Cleaning up existing data...');
+  await prisma.payment.deleteMany();
+  await prisma.studentInvoice.deleteMany();
+  await prisma.feeStructure.deleteMany();
   await prisma.result.deleteMany();
   await prisma.attendanceRecord.deleteMany();
   await prisma.subjectAllocation.deleteMany();
   await prisma.exam.deleteMany();
+  await prisma.term.deleteMany();
   await prisma.studentRecord.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.section.deleteMany();
@@ -26,11 +30,24 @@ async function main() {
   await prisma.subject.deleteMany();
   await prisma.academicYear.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.school.deleteMany();
 
-  // Step 2: Create Super Admin
+  // Step 2: Create Default School
+  const defaultSchool = await prisma.school.create({
+    data: {
+      name: 'Default School',
+      code: 'DEFAULT',
+      contactEmail: 'admin@school.com',
+      isActive: true,
+    },
+  });
+  console.log('Default School created: DEFAULT');
+
+  // Step 3: Create Super Admin
   const adminPassword = await argon2.hash('Admin@123');
   const superAdmin = await prisma.user.create({
     data: {
+      schoolId: defaultSchool.id,
       email: 'admin@heckteck.com',
       passwordHash: adminPassword,
       role: UserRole.SUPER_ADMIN,
@@ -49,9 +66,10 @@ async function main() {
   });
   console.log('Super Admin created: admin@heckteck.com');
 
-  // Step 3: Create Academic Year
+  // Step 4: Create Academic Year
   const currentYear = await prisma.academicYear.create({
     data: {
+      schoolId: defaultSchool.id,
       name: '2025/2026',
       startDate: new Date('2025-09-01'),
       endDate: new Date('2026-07-31'),
@@ -60,12 +78,43 @@ async function main() {
   });
   console.log('Current Academic Year created: 2025/2026');
 
-  // Step 4: Create Subjects
+  // Step 4b: Create Terms
+  const term1 = await prisma.term.create({
+    data: {
+      name: 'Term 1',
+      startDate: new Date('2025-09-01'),
+      endDate: new Date('2025-12-20'),
+      isCurrent: false,
+      academicYearId: currentYear.id,
+    },
+  });
+  const term2 = await prisma.term.create({
+    data: {
+      name: 'Term 2',
+      startDate: new Date('2026-01-06'),
+      endDate: new Date('2026-03-28'),
+      isCurrent: true,
+      academicYearId: currentYear.id,
+    },
+  });
+  await prisma.term.create({
+    data: {
+      name: 'Term 3',
+      startDate: new Date('2026-04-13'),
+      endDate: new Date('2026-07-31'),
+      isCurrent: false,
+      academicYearId: currentYear.id,
+    },
+  });
+  console.log('3 Terms created for 2025/2026');
+
+  // Step 5: Create Subjects
   const subjectsData = ['Mathematics', 'English', 'Science', 'History', 'Computing'];
   const createdSubjects: Subject[] = [];
   for (const name of subjectsData) {
     const subject = await prisma.subject.create({
       data: {
+        schoolId: defaultSchool.id,
         name,
         code: name.toUpperCase().substring(0, 4) + '101',
         isElective: false,
@@ -75,24 +124,28 @@ async function main() {
     console.log(`Subject created: ${name}`);
   }
 
-  // Step 5: Create Classes & Sections
+  // Step 6: Create Classes & Sections
   const classesData = ['Grade 10', 'Grade 11'];
   const sectionsData = ['A', 'B'];
   let grade10SectionAId = '';
   let grade11SectionBId = '';
+  const createdClasses: Class[] = [];
 
   for (const className of classesData) {
     const cls = await prisma.class.create({
       data: {
+        schoolId: defaultSchool.id,
         name: className,
         code: className.replace(' ', ''),
       },
     });
+    createdClasses.push(cls);
     console.log(`Class created: ${className}`);
 
     for (const sectionName of sectionsData) {
       const section = await prisma.section.create({
         data: {
+          schoolId: defaultSchool.id,
           name: sectionName,
           capacity: 30,
           classId: cls.id,
@@ -109,12 +162,13 @@ async function main() {
     }
   }
 
-  // Step 6: Create Teachers
+  // Step 7: Create Teachers
   const teacherPassword = await argon2.hash('Teacher@123');
   const teachers: User[] = [];
   for (let i = 1; i <= 5; i++) {
     const teacher = await prisma.user.create({
       data: {
+        schoolId: defaultSchool.id,
         email: `teacher${i}@heckteck.com`,
         passwordHash: teacherPassword,
         role: UserRole.TEACHER,
@@ -135,7 +189,7 @@ async function main() {
     console.log(`Teacher created: teacher${i}@heckteck.com`);
   }
 
-  // Step 7: Create Allocations
+  // Step 8: Create Allocations
   // Assign Teacher 1 to Mathematics (Index 0) for Grade 10-A
   const allocationMath10A = await prisma.subjectAllocation.create({
     data: {
@@ -158,10 +212,11 @@ async function main() {
   });
   console.log('Allocation created: Teacher 2 -> English -> Grade 10-A');
 
-  // Step 8: Create Parents
+  // Step 9: Create Parents
   const parentPassword = await argon2.hash('Parent@123');
   const parent1 = await prisma.user.create({
     data: {
+      schoolId: defaultSchool.id,
       email: 'parent1@heckteck.com',
       passwordHash: parentPassword,
       role: UserRole.PARENT,
@@ -180,7 +235,7 @@ async function main() {
   });
   console.log('Parent created: parent1@heckteck.com');
 
-  // Step 9: Create Students
+  // Step 10: Create Students
   const studentPassword = await argon2.hash('Student@123');
   const studentRecords: StudentRecord[] = [];
 
@@ -190,6 +245,7 @@ async function main() {
 
     const studentUser = await prisma.user.create({
       data: {
+        schoolId: defaultSchool.id,
         email: `student${i}@heckteck.com`,
         passwordHash: studentPassword,
         role: UserRole.STUDENT,
@@ -209,6 +265,7 @@ async function main() {
 
     const studentRecord = await prisma.studentRecord.create({
       data: {
+        schoolId: defaultSchool.id,
         userId: studentUser.id,
         admissionNumber,
         enrollmentDate: new Date(),
@@ -222,11 +279,12 @@ async function main() {
   console.log('50 Students created and assigned to sections.');
   console.log('First 3 students linked to parent1@heckteck.com');
 
-  // Step 10: Attendance (First 5 students, Today, Math 10-A)
+  // Step 11: Attendance (First 5 students, Today, Math 10-A)
   const today = new Date();
   for (let i = 0; i < 5; i++) {
     await prisma.attendanceRecord.create({
       data: {
+        schoolId: defaultSchool.id,
         studentId: studentRecords[i].id,
         allocationId: allocationMath10A.id,
         date: today,
@@ -237,13 +295,15 @@ async function main() {
   }
   console.log('Attendance marked for 5 students.');
 
-  // Step 11: Results (Exam Mid-Term 1)
+  // Step 12: Results (Exam Mid-Term 1)
   const exam = await prisma.exam.create({
     data: {
+      schoolId: defaultSchool.id,
       name: 'Mid-Term 1',
       startDate: new Date(),
       endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
       academicYearId: currentYear.id,
+      termId: term1.id,
       maxScore: 100,
     },
   });
@@ -270,6 +330,114 @@ async function main() {
     });
   }
   console.log('Results created for 10 students in Mid-Term 1 (Math).');
+
+  // Step 13: Create Fee Structures
+  const tuitionFee = await prisma.feeStructure.create({
+    data: {
+      schoolId: defaultSchool.id,
+      name: 'Tuition Fee',
+      amount: 2000.00,
+      academicYearId: currentYear.id,
+      classId: null, // Applies to all classes
+    },
+  });
+  console.log('Fee Structure created: Tuition Fee (GHS 2,000)');
+
+  const busFee = await prisma.feeStructure.create({
+    data: {
+      schoolId: defaultSchool.id,
+      name: 'Bus Fee',
+      amount: 500.00,
+      academicYearId: currentYear.id,
+      classId: null,
+    },
+  });
+  console.log('Fee Structure created: Bus Fee (GHS 500)');
+
+  const labFee = await prisma.feeStructure.create({
+    data: {
+      schoolId: defaultSchool.id,
+      name: 'Lab Fee',
+      amount: 200.00,
+      academicYearId: currentYear.id,
+      classId: createdClasses[1].id, // Only for Grade 11
+    },
+  });
+  console.log('Fee Structure created: Lab Fee (GHS 200) - Grade 11 only');
+
+  // Step 14: Create Sample Invoices
+  const generateInvoiceNumber = (index: number) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `INV-${year}${month}-${String(index).padStart(4, '0')}`;
+  };
+
+  const generateReceiptNumber = (index: number) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `RCP-${year}${month}${day}-${String(index).padStart(4, '0')}`;
+  };
+
+  const invoicesCreated: Array<{ invoice: { id: string }; amountPaid: number }> = [];
+  for (let i = 0; i < 10; i++) {
+    const student = studentRecords[i];
+    const isGrade11 = i >= 25; // Simplified: first 25 are Grade 10
+    const totalAmount = isGrade11 ? 2700.00 : 2500.00; // With or without lab fee
+
+    let status: InvoiceStatus;
+    let amountPaid: number;
+
+    if (i < 3) {
+      status = InvoiceStatus.PAID;
+      amountPaid = totalAmount;
+    } else if (i < 6) {
+      status = InvoiceStatus.PARTIAL;
+      amountPaid = faker.number.int({ min: 500, max: totalAmount - 100 });
+    } else if (i < 8) {
+      status = InvoiceStatus.PENDING;
+      amountPaid = 0;
+    } else {
+      status = InvoiceStatus.OVERDUE;
+      amountPaid = 0;
+    }
+
+    const invoice = await prisma.studentInvoice.create({
+      data: {
+        schoolId: defaultSchool.id,
+        invoiceNumber: generateInvoiceNumber(i + 1),
+        studentId: student.id,
+        termId: term2.id,
+        totalAmount,
+        amountPaid,
+        status,
+        dueDate: new Date('2026-02-15'),
+      },
+    });
+    invoicesCreated.push({ invoice, amountPaid });
+  }
+  console.log('10 Sample invoices created with varying statuses.');
+
+  // Step 15: Create Sample Payments for paid/partial invoices
+  let receiptIndex = 1;
+  for (const { invoice, amountPaid } of invoicesCreated) {
+    if (amountPaid > 0) {
+      await prisma.payment.create({
+        data: {
+          schoolId: defaultSchool.id,
+          receiptNumber: generateReceiptNumber(receiptIndex++),
+          invoiceId: invoice.id,
+          amount: amountPaid,
+          method: faker.helpers.arrayElement([PaymentMethod.CASH, PaymentMethod.MOBILE_MONEY, PaymentMethod.BANK_TRANSFER]),
+          reference: faker.helpers.arrayElement([null, `MOMO-${faker.string.alphanumeric(10).toUpperCase()}`]),
+          paymentDate: faker.date.between({ from: '2026-01-15', to: '2026-03-01' }),
+        },
+      });
+    }
+  }
+  console.log('Payments created for paid/partial invoices.');
 
   console.log('Seeding completed.');
 }

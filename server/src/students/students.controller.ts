@@ -1,9 +1,12 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Query, Patch } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { ABACGuard } from '../common/guards/abac.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ABAC } from '../common/decorators/abac.decorator';
 import { UserRole } from '@prisma/client';
 import { IsUUID, IsNotEmpty } from 'class-validator';
 
@@ -13,8 +16,10 @@ class AssignSectionDto {
   sectionId: string;
 }
 
+@ApiTags('Students')
+@ApiBearerAuth()
 @Controller('students')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard, ABACGuard)
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
@@ -44,6 +49,7 @@ export class StudentsController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.PARENT)
+  @ABAC('OWN_STUDENTS', 'OWN_CHILDREN')
   findOne(@Param('id') id: string) {
     return this.studentsService.findOne(id);
   }

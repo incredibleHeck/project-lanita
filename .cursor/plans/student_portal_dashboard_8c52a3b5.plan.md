@@ -250,6 +250,6 @@ if (user?.role !== 'STUDENT') {
 
 - `/teacher/`* - Only TEACHER role
 - `/student/`* - Only STUDENT role
-- `/parent/*` - Only PARENT role
+- `/parent/`* - Only PARENT role
 - Admin pages (`/students`, `/dashboard/teachers`, etc.) - Only ADMIN/SUPER_ADMIN
 

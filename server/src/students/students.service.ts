@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { UserEntity } from '../common/entities/user.entity';
 import * as argon2 from 'argon2';
 import { UserRole } from '@prisma/client';
 
@@ -160,7 +161,7 @@ export class StudentsService {
     const lastPage = Math.ceil(total / limit);
 
     return {
-      data,
+      data: data.map((user) => new UserEntity(user)),
       meta: {
         total,
         page,
@@ -170,7 +171,7 @@ export class StudentsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
         profile: true,
@@ -181,6 +182,10 @@ export class StudentsService {
         },
       },
     });
+    if (!user) {
+      throw new NotFoundException('Student not found');
+    }
+    return new UserEntity(user);
   }
 
   async assignSection(studentUserId: string, sectionId: string) {

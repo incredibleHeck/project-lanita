@@ -11,17 +11,21 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarDays } from "lucide-react";
 
-const mockData = [
-  { name: "Mon", present: 45, absent: 5 },
-  { name: "Tue", present: 42, absent: 8 },
-  { name: "Wed", present: 48, absent: 2 },
-  { name: "Thu", present: 44, absent: 6 },
-  { name: "Fri", present: 40, absent: 10 },
-];
+interface AttendanceDataPoint {
+  day: string;
+  present: number;
+  absent: number;
+}
 
-export function AttendanceChart() {
+interface AttendanceChartProps {
+  data?: AttendanceDataPoint[];
+  isLoading?: boolean;
+}
+
+export function AttendanceChart({ data, isLoading }: AttendanceChartProps) {
   return (
     <Card>
       <CardHeader>
@@ -32,55 +36,65 @@ export function AttendanceChart() {
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={mockData}
-              margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                className="stroke-muted"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="fill-muted-foreground"
-              />
-              <YAxis
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="fill-muted-foreground"
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "var(--radius)",
-                  color: "hsl(var(--popover-foreground))",
-                }}
-                labelStyle={{ fontWeight: 600 }}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
-              />
-              <Bar
-                dataKey="present"
-                name="Present"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                dataKey="absent"
-                name="Absent"
-                fill="hsl(var(--destructive))"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {isLoading ? (
+            <div className="flex flex-col justify-end h-full gap-2">
+              <Skeleton className="h-full w-full" />
+            </div>
+          ) : !data || data.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+              No attendance data available for this week.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={data}
+                margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-muted"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="fill-muted-foreground"
+                />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="fill-muted-foreground"
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                    color: "hsl(var(--popover-foreground))",
+                  }}
+                  labelStyle={{ fontWeight: 600 }}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
+                />
+                <Bar
+                  dataKey="present"
+                  name="Present"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="absent"
+                  name="Absent"
+                  fill="hsl(var(--destructive))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>

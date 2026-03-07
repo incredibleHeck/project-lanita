@@ -120,9 +120,12 @@ export class ResultsService {
     return { message: 'Results recorded successfully' };
   }
 
-  async getStudentResults(studentId: string) {
+  async getStudentResults(studentId: string, useUserId = false) {
+    const where = useUserId
+      ? { student: { userId: studentId } }
+      : { studentId };
     const results = await this.prisma.result.findMany({
-      where: { studentId },
+      where,
       include: {
         exam: true,
         subject: true,

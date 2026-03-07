@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, Request } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AllocationsService } from './allocations.service';
 import { CreateAllocationDto } from './dto/create-allocation.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -6,6 +7,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
+@ApiTags('Allocations')
+@ApiBearerAuth()
 @Controller('allocations')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class AllocationsController {

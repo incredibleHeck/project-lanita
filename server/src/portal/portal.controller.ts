@@ -1,10 +1,13 @@
 import { Controller, Get, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { PortalService } from './portal.service';
 
+@ApiTags('Portal')
+@ApiBearerAuth()
 @Controller('portal')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class PortalController {

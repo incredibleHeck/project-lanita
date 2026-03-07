@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -6,6 +7,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
+@ApiTags('Exams')
+@ApiBearerAuth()
 @Controller('exams')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ExamsController {

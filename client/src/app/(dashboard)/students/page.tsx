@@ -5,11 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "@/lib/axios";
 import { columns, Student } from "@/components/students/columns";
 import { DataTable } from "@/components/students/data-table";
+import { AddStudentSheet } from "@/components/students/add-student-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 interface StudentsResponse {
@@ -54,12 +53,7 @@ export default function StudentsPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Students</h1>
-        <Link href="/students/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Student
-          </Button>
-        </Link>
+        <AddStudentSheet />
       </div>
 
       <div className="flex items-center">

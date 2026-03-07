@@ -37,7 +37,11 @@ export class SectionsService {
     return this.prisma.section.findMany({
       include: {
         class: true,
+        _count: {
+          select: { students: true },
+        },
       },
+      orderBy: { name: 'asc' },
     });
   }
 

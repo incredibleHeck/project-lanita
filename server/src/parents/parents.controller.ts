@@ -1,4 +1,5 @@
 import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ParentsService } from './parents.service';
 import { CreateParentDto } from './dto/create-parent.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -6,6 +7,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
+@ApiTags('Parents')
+@ApiBearerAuth()
 @Controller('parents')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ParentsController {
