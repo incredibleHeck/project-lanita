@@ -1,4 +1,5 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { SubjectType } from '@prisma/client';
 
 export class CreateSubjectDto {
   @IsString()
@@ -9,9 +10,9 @@ export class CreateSubjectDto {
   @IsNotEmpty()
   code: string;
 
-  @IsBoolean()
+  @IsEnum(SubjectType)
   @IsOptional()
-  isElective?: boolean;
+  subjectType?: SubjectType;
 
   @IsString()
   @IsOptional()

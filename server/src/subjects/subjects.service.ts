@@ -9,8 +9,13 @@ export class SubjectsService {
 
   async create(createSubjectDto: CreateSubjectDto) {
     try {
+      const { subjectType, ...rest } = createSubjectDto;
       return await this.prisma.subject.create({
-        data: createSubjectDto,
+        data: {
+          ...rest,
+          subjectType: subjectType ?? 'CORE',
+          isElective: subjectType === 'ELECTIVE',
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -37,9 +42,13 @@ export class SubjectsService {
   }
 
   async update(id: string, data: Partial<CreateSubjectDto>) {
+    const { subjectType, ...rest } = data;
+    const dataToUpdate = subjectType !== undefined
+      ? { ...rest, subjectType, isElective: subjectType === 'ELECTIVE' }
+      : rest;
     return this.prisma.subject.update({
       where: { id },
-      data,
+      data: dataToUpdate,
     });
   }
 

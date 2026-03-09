@@ -46,6 +46,12 @@ enum PaymentMethod {
   MOBILE_MONEY
 }
 
+enum SubjectType {
+  CORE
+  OPTIONAL
+  ELECTIVE
+}
+
 enum RoomType {
   CLASSROOM
   LAB
@@ -231,6 +237,7 @@ model Subject {
   name           String
   code           String
   description    String?
+  subjectType    SubjectType         @default(CORE)
   isElective     Boolean             @default(false)
   periodsPerWeek Int                 @default(3)
   requiresLab    Boolean             @default(false)

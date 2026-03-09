@@ -20,6 +20,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -27,9 +34,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+const SUBJECT_TYPES = ["CORE", "OPTIONAL", "ELECTIVE"] as const;
+
 const addSubjectSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required"),
+  subjectType: z.enum(SUBJECT_TYPES),
   description: z.string().optional(),
 });
 
@@ -44,6 +54,7 @@ export function AddSubjectSheet() {
     defaultValues: {
       name: "",
       code: "",
+      subjectType: "CORE",
       description: "",
     },
   });
@@ -53,6 +64,7 @@ export function AddSubjectSheet() {
       const payload = {
         name: data.name,
         code: data.code.toUpperCase(),
+        subjectType: data.subjectType,
         description: data.description || undefined,
       };
       return api.post("/subjects", payload);
@@ -76,7 +88,7 @@ export function AddSubjectSheet() {
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
-      form.reset();
+      form.reset({ name: "", code: "", subjectType: "CORE", description: "" });
     }
     setOpen(nextOpen);
   }
@@ -124,6 +136,33 @@ export function AddSubjectSheet() {
                   <FormControl>
                     <Input placeholder="MATH" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="subjectType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="CORE">Core</SelectItem>
+                      <SelectItem value="OPTIONAL">Optional</SelectItem>
+                      <SelectItem value="ELECTIVE">Elective</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

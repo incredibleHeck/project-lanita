@@ -20,6 +20,7 @@ interface Subject {
   name: string;
   code: string;
   description?: string | null;
+  subjectType?: string;
   isElective?: boolean;
 }
 
@@ -83,8 +84,10 @@ export default function SubjectsPage() {
                       {subject.description || "—"}
                     </TableCell>
                     <TableCell>
-                      {subject.isElective ? (
+                      {subject.subjectType === "ELECTIVE" ? (
                         <Badge variant="outline">Elective</Badge>
+                      ) : subject.subjectType === "OPTIONAL" ? (
+                        <Badge variant="secondary">Optional</Badge>
                       ) : (
                         <Badge variant="default">Core</Badge>
                       )}
