@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { WifiOff, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOnlineStatus } from '@/hooks/use-offline-attendance';
@@ -12,6 +13,7 @@ interface OfflineIndicatorProps {
 }
 
 export function OfflineIndicator({ className }: OfflineIndicatorProps) {
+  const pathname = usePathname();
   const { isOnline, pendingCount } = useOnlineStatus();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
@@ -56,9 +58,9 @@ export function OfflineIndicator({ className }: OfflineIndicatorProps) {
     return new Date(timestamp).toLocaleDateString();
   };
 
-  if (isOnline && pendingCount === 0 && failedCount === 0) {
-    return null;
-  }
+  // Don't show on login - user needs to sign in first; offline banner is confusing there
+  if (pathname === '/login') return null;
+  if (isOnline && pendingCount === 0 && failedCount === 0) return null;
 
   return (
     <div

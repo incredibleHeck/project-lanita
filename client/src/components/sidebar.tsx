@@ -43,6 +43,11 @@ const adminNavigation = [
     icon: GraduationCap,
   },
   {
+    name: "Subjects",
+    href: "/dashboard/subjects",
+    icon: BookOpen,
+  },
+  {
     name: "Attendance",
     href: "/dashboard/attendance",
     icon: ClipboardCheck,

@@ -34,8 +34,9 @@ services:
     container_name: lanita-server
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/lanita
-      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-jwt-secret-change-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-in-production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}
       NODE_ENV: ${NODE_ENV:-development}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ML_SERVICE_URL: http://ml-service:5000
@@ -58,11 +59,13 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:4001}
     container_name: lanita-client
     environment:
       NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:4001}
     ports:
-      - "${WEB_PORT:-4000}:3001"
+      - "${WEB_PORT:-3000}:3001"
     depends_on:
       - server
     restart: unless-stopped

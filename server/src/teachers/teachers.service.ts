@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserEntity } from '../common/entities/user.entity';
 import { UserRole } from '@prisma/client';
+import * as argon2 from 'argon2';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
+import { CreateTeacherDto } from './dto/create-teacher.dto';
 
 @Injectable()
 export class TeachersService {
@@ -70,6 +73,56 @@ export class TeachersService {
         lastPage,
       },
     };
+  }
+
+  async create(dto: CreateTeacherDto) {
+    const schoolId = getTenantSchoolId();
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        email: dto.email,
+        ...(schoolId && { schoolId }),
+      },
+    });
+    if (existing) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const defaultPassword = 'Teacher@123';
+    const passwordHash = await argon2.hash(defaultPassword);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          ...(schoolId && { schoolId }),
+          email: dto.email,
+          passwordHash,
+          role: UserRole.TEACHER,
+          isActive: true,
+        },
+      });
+
+      await tx.profile.create({
+        data: {
+          userId: newUser.id,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          middleName: dto.middleName,
+          dob: new Date(dto.dob),
+          gender: dto.gender,
+          contactNumber: dto.contactNumber,
+          address: dto.address ?? {},
+          ...(dto.avatarUrl && { avatarUrl: dto.avatarUrl }),
+        },
+      });
+
+      return newUser;
+    });
+
+    const created = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: { profile: true },
+    });
+    return new UserEntity(created!);
   }
 
   async findOne(id: string) {

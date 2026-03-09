@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,20 @@ import {
 } from "@/components/ui/sheet";
 import { PassportPhotoUpload } from "@/components/ui/passport-photo-upload";
 
-const addStudentSchema = z.object({
+interface SubjectItem {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface SectionItem {
+  id: string;
+  name: string;
+  capacity: number;
+  class: { id: string; name: string; code: string };
+}
+
+const addTeacherSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
@@ -45,22 +58,31 @@ const addStudentSchema = z.object({
   address: z.object({
     city: z.string().min(1, "City is required"),
   }),
-  sectionId: z.string().min(1, "Please select a section"),
+  allocations: z
+    .array(
+      z.object({
+        sectionId: z.string(),
+        subjectId: z.string(),
+      })
+    )
+    .optional(),
   avatarUrl: z.string().optional().nullable(),
 });
 
-type AddStudentFormValues = z.infer<typeof addStudentSchema>;
+type AddTeacherFormValues = z.infer<typeof addTeacherSchema>;
 
-interface SectionItem {
-  id: string;
-  name: string;
-  capacity: number;
-  class: { id: string; name: string; code: string };
-}
-
-export function AddStudentSheet() {
+export function AddTeacherSheet() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: subjects = [], isLoading: subjectsLoading } = useQuery({
+    queryKey: ["subjects"],
+    queryFn: async () => {
+      const res = await api.get<SubjectItem[]>("/subjects");
+      return res.data;
+    },
+    enabled: open,
+  });
 
   const { data: sections = [], isLoading: sectionsLoading } = useQuery({
     queryKey: ["sections"],
@@ -71,8 +93,8 @@ export function AddStudentSheet() {
     enabled: open,
   });
 
-  const form = useForm<AddStudentFormValues>({
-    resolver: zodResolver(addStudentSchema),
+  const form = useForm<AddTeacherFormValues>({
+    resolver: zodResolver(addTeacherSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -81,13 +103,18 @@ export function AddStudentSheet() {
       gender: "MALE",
       contactNumber: "",
       address: { city: "" },
-      sectionId: "",
+      allocations: [{ sectionId: "", subjectId: "" }],
       avatarUrl: null as string | null,
     },
   });
 
-  const createStudent = useMutation({
-    mutationFn: async (data: AddStudentFormValues) => {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "allocations",
+  });
+
+  const createTeacher = useMutation({
+    mutationFn: async (data: AddTeacherFormValues) => {
       const payload = {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -96,27 +123,49 @@ export function AddStudentSheet() {
         gender: data.gender,
         contactNumber: data.contactNumber,
         address: { city: data.address.city },
-        sectionId: data.sectionId,
-        admissionDate: new Date().toISOString().split("T")[0],
         ...(data.avatarUrl && { avatarUrl: data.avatarUrl }),
       };
-      return api.post("/students", payload);
+      const teacherRes = await api.post<{ id: string }>("/teachers", payload);
+      const teacherId = teacherRes.data.id;
+
+      const allocations = data.allocations?.filter(
+        (a) => a.sectionId && a.subjectId
+      ) ?? [];
+      for (const alloc of allocations) {
+        await api.post("/allocations", {
+          teacherId,
+          sectionId: alloc.sectionId,
+          subjectId: alloc.subjectId,
+        });
+      }
+      return teacherRes;
     },
     onSuccess: () => {
-      toast.success("Student added successfully");
-      form.reset();
+      toast.success("Teacher added successfully");
+      form.reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        dob: "",
+        gender: "MALE",
+        contactNumber: "",
+        address: { city: "" },
+        allocations: [{ sectionId: "", subjectId: "" }],
+        avatarUrl: null,
+      });
       setOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: ["allocations"] });
     },
     onError: (error: { response?: { data?: { message?: string } } }) => {
       const message =
-        error?.response?.data?.message ?? "Failed to add student. Please try again.";
+        error?.response?.data?.message ?? "Failed to add teacher. Please try again.";
       toast.error(message);
     },
   });
 
-  function onSubmit(data: AddStudentFormValues) {
-    createStudent.mutate(data);
+  function onSubmit(data: AddTeacherFormValues) {
+    createTeacher.mutate(data);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -129,7 +178,7 @@ export function AddStudentSheet() {
         gender: "MALE",
         contactNumber: "",
         address: { city: "" },
-        sectionId: "",
+        allocations: [{ sectionId: "", subjectId: "" }],
         avatarUrl: null,
       });
     }
@@ -141,7 +190,7 @@ export function AddStudentSheet() {
       <SheetTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Add Student
+          Add Teacher
         </Button>
       </SheetTrigger>
       <SheetContent
@@ -149,7 +198,7 @@ export function AddStudentSheet() {
         className="flex flex-col sm:max-w-md overflow-y-auto"
       >
         <SheetHeader>
-          <SheetTitle>Add Student</SheetTitle>
+          <SheetTitle>Add Teacher</SheetTitle>
         </SheetHeader>
         <Form {...form}>
           <form
@@ -165,7 +214,7 @@ export function AddStudentSheet() {
                     <PassportPhotoUpload
                       value={field.value}
                       onChange={field.onChange}
-                      disabled={createStudent.isPending}
+                      disabled={createTeacher.isPending}
                     />
                   </FormControl>
                   <FormMessage />
@@ -181,7 +230,7 @@ export function AddStudentSheet() {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John" {...field} />
+                      <Input placeholder="Jane" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -194,7 +243,7 @@ export function AddStudentSheet() {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Doe" {...field} />
+                      <Input placeholder="Smith" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -211,7 +260,7 @@ export function AddStudentSheet() {
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="john.doe@example.com"
+                      placeholder="jane.smith@example.com"
                       {...field}
                     />
                   </FormControl>
@@ -290,47 +339,113 @@ export function AddStudentSheet() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="sectionId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Section</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={sectionsLoading}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <FormLabel>Subject Allocations</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ sectionId: "", subjectId: "" })}
+                  disabled={subjectsLoading || sectionsLoading}
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  Add
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Assign sections and subjects this teacher will teach (optional)
+              </p>
+              {fields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="flex gap-2 items-end rounded-lg border p-3"
+                >
+                  <FormField
+                    control={form.control}
+                    name={`allocations.${index}.sectionId`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-xs">Section</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={sectionsLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Section" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {sections.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.class.name} - {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`allocations.${index}.subjectId`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-xs">Subject</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={subjectsLoading}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Subject" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subjects.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} ({s.code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    disabled={fields.length <= 1}
                   >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select section" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {sections.map((section) => (
-                        <SelectItem key={section.id} value={section.id}>
-                          {section.class.name} - {section.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Default password: Teacher@123 (teacher can change after first login)
+            </p>
 
             <Button
               type="submit"
-              disabled={createStudent.isPending}
+              disabled={createTeacher.isPending}
               className="mt-4"
             >
-              {createStudent.isPending ? (
+              {createTeacher.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Adding...
                 </>
               ) : (
-                "Add Student"
+                "Add Teacher"
               )}
             </Button>
           </form>

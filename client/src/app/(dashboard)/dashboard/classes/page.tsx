@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
+import { AddClassSheet } from "@/components/classes/add-class-sheet";
 import {
   Card,
   CardContent,
@@ -103,7 +104,10 @@ export default function ClassesPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-3xl font-bold tracking-tight">Classes & Sections</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Classes & Sections</h1>
+        <AddClassSheet />
+      </div>
 
       {!classes || classes.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 min-h-[300px] rounded-lg border border-dashed">

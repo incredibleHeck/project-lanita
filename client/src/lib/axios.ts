@@ -1,9 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001',
   headers: {
     'Content-Type': 'application/json',
+    'X-Tenant-ID': process.env.NEXT_PUBLIC_TENANT_ID || 'DEFAULT',
   },
 });
 
@@ -82,7 +83,12 @@ api.interceptors.response.use(
       const { data } = await axios.post(
         `${api.defaults.baseURL}/auth/refresh`,
         {},
-        { headers: { Authorization: `Bearer ${refreshToken}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${refreshToken}`,
+            'X-Tenant-ID': process.env.NEXT_PUBLIC_TENANT_ID || 'DEFAULT',
+          },
+        },
       );
 
       if (typeof window !== 'undefined') {

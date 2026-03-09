@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
+import { AddTeacherSheet } from "@/components/teachers/add-teacher-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +97,7 @@ export default function TeachersPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Teachers</h1>
+        <AddTeacherSheet />
       </div>
 
       <div className="flex items-center">

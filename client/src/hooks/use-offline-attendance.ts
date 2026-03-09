@@ -286,6 +286,37 @@ export function useOnlineStatus() {
     };
   }, []);
 
+  // navigator.onLine can be unreliable (e.g. Windows Chrome, VPN). Verify with a fetch.
+  useEffect(() => {
+    if (typeof window === 'undefined' || isOnline) return;
+
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const checkConnection = (opts?: RequestInit) =>
+      fetch(`${baseURL}/`, {
+        method: 'GET',
+        headers: { 'X-Tenant-ID': 'DEFAULT' },
+        ...opts,
+      }).then(() => setIsOnline(true));
+
+    checkConnection({ signal: controller.signal })
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+
+    const interval = setInterval(() => {
+      if (isOnline) return;
+      checkConnection().catch(() => {});
+    }, 15000);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+      controller.abort();
+    };
+  }, [isOnline]);
+
   useEffect(() => {
     const updatePendingCount = async () => {
       try {

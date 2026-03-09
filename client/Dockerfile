@@ -14,15 +14,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build arg for API URL (used at build time for client-side code)
+ARG NEXT_PUBLIC_API_URL=http://localhost:4001
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 
 # Copy source code
 COPY . .
-
-# Set dummy API URL for build time (will be overridden at runtime)
-ENV NEXT_PUBLIC_API_URL=http://localhost:3001
 
 # Build the application
 RUN npm run build

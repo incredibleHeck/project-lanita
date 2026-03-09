@@ -1,8 +1,9 @@
-import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { UserRole } from '@prisma/client';
 import { TeachersService } from './teachers.service';
+import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
@@ -12,6 +13,12 @@ import { Roles } from '../common/decorators/roles.decorator';
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
+
+  @Post()
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  create(@Body() createTeacherDto: CreateTeacherDto) {
+    return this.teachersService.create(createTeacherDto);
+  }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

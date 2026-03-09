@@ -45,4 +45,8 @@ export class CreateStudentDto {
   @IsDateString()
   @IsNotEmpty()
   admissionDate: string;
+
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
 }

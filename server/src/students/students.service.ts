@@ -67,6 +67,7 @@ export class StudentsService {
             gender: createStudentDto.gender,
             contactNumber: createStudentDto.contactNumber,
             address: createStudentDto.address,
+            ...(createStudentDto.avatarUrl && { avatarUrl: createStudentDto.avatarUrl }),
           },
         });
 

@@ -47,5 +47,5 @@ COPY --from=builder /app/prisma.config.ts ./
 # Expose the application port
 EXPOSE 3000
 
-# Run migrations and start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+# Run migrations, seed (creates DEFAULT school + admin), then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/src/main.js"]

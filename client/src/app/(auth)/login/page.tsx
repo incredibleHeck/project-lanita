@@ -71,7 +71,18 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: unknown) {
       console.error("Login error:", error);
-      toast.error("Invalid credentials. Please try again.");
+      const err = error as { code?: string; message?: string; response?: unknown };
+      const isNetworkError =
+        err?.code === "ERR_NETWORK" ||
+        err?.message === "Network Error" ||
+        (err?.response === undefined && err?.message?.includes("fetch"));
+      if (isNetworkError) {
+        toast.error(
+          "Connection failed. Please check your internet and ensure the server is running."
+        );
+      } else {
+        toast.error("Invalid credentials. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
