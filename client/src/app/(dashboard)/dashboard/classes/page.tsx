@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { AddClassSheet } from "@/components/classes/add-class-sheet";
@@ -19,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { GraduationCap, Users, Edit2, Trash2, MapPin } from "lucide-react";
+import { GraduationCap, Users, Edit2, Trash2, MapPin, UserCircle } from "lucide-react";
 
 interface ClassItem {
   id: string;
@@ -177,6 +178,19 @@ export default function ClassesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        asChild
+                      >
+                        <Link
+                          href={`/students?classId=${cls.id}`}
+                          title={`View students in ${cls.name}`}
+                        >
+                          <UserCircle className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => {
                           setEditClass(cls);
                           setEditClassOpen(true);
@@ -235,9 +249,13 @@ export default function ClassesPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm">
+                                <Link
+                                  href={`/students?sectionId=${section.id}`}
+                                  className="font-medium text-sm hover:underline text-primary"
+                                  title={`View students in ${section.name}`}
+                                >
                                   {section.name}
-                                </span>
+                                </Link>
                                 {section.defaultRoom && (
                                   <span
                                     className="text-xs text-muted-foreground flex items-center gap-1"

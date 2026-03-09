@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, UseGuards, Query, Patch } from '@ne
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ABACGuard } from '../common/guards/abac.guard';
@@ -27,6 +28,12 @@ export class StudentsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   create(@Body() createStudentDto: CreateStudentDto) {
     return this.studentsService.create(createStudentDto);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
+    return this.studentsService.update(id, updateStudentDto);
   }
 
   @Get()

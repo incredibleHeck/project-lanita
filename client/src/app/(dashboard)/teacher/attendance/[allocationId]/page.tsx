@@ -259,7 +259,7 @@ export default function AttendancePage({ params }: { params: Promise<{ allocatio
                 return (
                   <TableRow key={student.id}>
                     <TableCell>
-                      <Avatar className="h-8 w-8">
+                      <Avatar className="h-24 w-24">
                         <AvatarImage
                           src={student.profile?.avatarUrl || ""}
                           alt={`${firstName} ${lastName}`}

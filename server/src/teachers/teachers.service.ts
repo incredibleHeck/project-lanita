@@ -5,6 +5,7 @@ import { UserRole } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
+import { UpdateTeacherDto } from './dto/update-teacher.dto';
 
 @Injectable()
 export class TeachersService {
@@ -123,6 +124,78 @@ export class TeachersService {
       include: { profile: true },
     });
     return new UserEntity(created!);
+  }
+
+  async update(id: string, dto: UpdateTeacherDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    if (user.role !== UserRole.TEACHER) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const schoolId = getTenantSchoolId();
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email,
+          ...(schoolId && { schoolId }),
+          id: { not: id },
+        },
+      });
+      if (existing) {
+        throw new ConflictException('A user with this email already exists');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const userUpdate: Record<string, unknown> = {};
+      if (dto.email !== undefined) userUpdate.email = dto.email;
+
+      if (Object.keys(userUpdate).length > 0) {
+        await tx.user.update({
+          where: { id },
+          data: userUpdate,
+        });
+      }
+
+      const profileUpdate: Record<string, unknown> = {};
+      if (dto.firstName !== undefined) profileUpdate.firstName = dto.firstName;
+      if (dto.lastName !== undefined) profileUpdate.lastName = dto.lastName;
+      if (dto.middleName !== undefined) profileUpdate.middleName = dto.middleName;
+      if (dto.dob !== undefined) profileUpdate.dob = new Date(dto.dob);
+      if (dto.gender !== undefined) profileUpdate.gender = dto.gender;
+      if (dto.contactNumber !== undefined) profileUpdate.contactNumber = dto.contactNumber;
+      if (dto.address !== undefined) profileUpdate.address = dto.address;
+      if (dto.avatarUrl !== undefined) profileUpdate.avatarUrl = dto.avatarUrl;
+
+      if (Object.keys(profileUpdate).length > 0 && user.profile) {
+        await tx.profile.update({
+          where: { userId: id },
+          data: profileUpdate,
+        });
+      }
+    });
+
+    const updated = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        profile: true,
+        teacherAllocations: {
+          include: {
+            section: { include: { class: true } },
+            subject: true,
+          },
+        },
+      },
+    });
+    return new UserEntity(updated!);
   }
 
   async findOne(id: string) {

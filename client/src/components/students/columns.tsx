@@ -17,24 +17,31 @@ import Link from "next/link";
 
 export type Student = {
   id: string;
-  isActive: boolean;
-  profile: {
-    firstName: string;
-    lastName: string;
+  isActive?: boolean;
+  email?: string;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
     avatarUrl?: string | null;
+    dob?: string | Date;
+    gender?: string;
+    contactNumber?: string;
+    address?: { city?: string };
   };
   studentRecord?: {
-    admissionNumber: string;
+    admissionNumber?: string;
     currentSection?: {
-      name: string;
+      id?: string;
+      name?: string;
       class?: {
-        name: string;
+        name?: string;
       };
     } | null;
   } | null;
 };
 
-export const columns: ColumnDef<Student>[] = [
+export function getColumns(onEdit?: (student: Student) => void): ColumnDef<Student>[] {
+  return [
   {
     accessorKey: "avatar",
     header: "",
@@ -45,7 +52,7 @@ export const columns: ColumnDef<Student>[] = [
       const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
       return (
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-24 w-24">
           <AvatarImage src={student.profile?.avatarUrl || ""} alt={`${firstName} ${lastName}`} />
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
@@ -79,7 +86,7 @@ export const columns: ColumnDef<Student>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      const isActive = row.original.isActive;
+      const isActive = row.original.isActive ?? true;
       return (
         <Badge variant={isActive ? "default" : "destructive"} className={isActive ? "bg-green-500 hover:bg-green-600" : ""}>
           {isActive ? "Active" : "Inactive"}
@@ -115,12 +122,22 @@ export const columns: ColumnDef<Student>[] = [
                 View Report Card
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/students/${student.id}/edit`} className="flex items-center">
+            {onEdit ? (
+              <DropdownMenuItem
+                onClick={() => onEdit(student)}
+                className="flex items-center cursor-pointer"
+              >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
-              </Link>
-            </DropdownMenuItem>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem asChild>
+                <Link href={`/students/${student.id}/edit`} className="flex items-center">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem className="text-red-600 focus:text-red-600" asChild>
               <button className="flex w-full items-center">
                 <Trash className="mr-2 h-4 w-4" />
@@ -133,3 +150,6 @@ export const columns: ColumnDef<Student>[] = [
     },
   },
 ];
+}
+
+export const columns = getColumns();

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { AddTeacherSheet } from "@/components/teachers/add-teacher-sheet";
+import { EditTeacherSheet } from "@/components/teachers/edit-teacher-sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,10 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Edit2 } from "lucide-react";
 
 interface TeacherProfile {
   firstName?: string;
   lastName?: string;
+  avatarUrl?: string | null;
 }
 
 interface TeacherAllocation {
@@ -48,6 +52,8 @@ export default function TeachersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
+  const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["teachers", page, debouncedSearch],
@@ -100,6 +106,15 @@ export default function TeachersPage() {
         <AddTeacherSheet />
       </div>
 
+      <EditTeacherSheet
+        teacher={editTeacher}
+        open={editSheetOpen}
+        onOpenChange={(open) => {
+          setEditSheetOpen(open);
+          if (!open) setEditTeacher(null);
+        }}
+      />
+
       <div className="flex items-center">
         <Input
           placeholder="Search by name..."
@@ -126,22 +141,34 @@ export default function TeachersPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-28" />
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Subjects</TableHead>
                 <TableHead>Classes</TableHead>
+                <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {teachers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No teachers found.
                   </TableCell>
                 </TableRow>
               ) : (
-                teachers.map((teacher) => (
+                teachers.map((teacher) => {
+                  const firstName = teacher.profile?.firstName ?? "";
+                  const lastName = teacher.profile?.lastName ?? "";
+                  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "?";
+                  return (
                   <TableRow key={teacher.id}>
+                    <TableCell>
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={teacher.profile?.avatarUrl || ""} alt={getTeacherName(teacher)} />
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
                     <TableCell className="font-medium">
                       {getTeacherName(teacher)}
                     </TableCell>
@@ -172,8 +199,22 @@ export default function TeachersPage() {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setEditTeacher(teacher);
+                          setEditSheetOpen(true);
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                ))
+                );
+                })
               )}
             </TableBody>
           </Table>

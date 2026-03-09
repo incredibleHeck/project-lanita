@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, AttendanceStatus, Subject, User, StudentRecord, InvoiceStatus, PaymentMethod, Class } from '@prisma/client';
+import { PrismaClient, UserRole, AttendanceStatus, Subject, User, StudentRecord, InvoiceStatus, PaymentMethod, Class, RoomType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { faker } from '@faker-js/faker';
@@ -20,12 +20,14 @@ async function main() {
   await prisma.feeStructure.deleteMany();
   await prisma.result.deleteMany();
   await prisma.attendanceRecord.deleteMany();
+  await prisma.timetableSlot.deleteMany();
   await prisma.subjectAllocation.deleteMany();
   await prisma.exam.deleteMany();
   await prisma.term.deleteMany();
   await prisma.studentRecord.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.section.deleteMany();
+  await prisma.room.deleteMany();
   await prisma.class.deleteMany();
   await prisma.subject.deleteMany();
   await prisma.academicYear.deleteMany();
@@ -131,8 +133,7 @@ async function main() {
   // Step 6: Create Classes & Sections
   const classesData = ['Grade 10', 'Grade 11'];
   const sectionsData = ['A', 'B'];
-  let grade10SectionAId = '';
-  let grade11SectionBId = '';
+  const sectionIds: Record<string, Record<string, string>> = {};
   const createdClasses: Class[] = [];
 
   for (const className of classesData) {
@@ -146,6 +147,7 @@ async function main() {
     createdClasses.push(cls);
     console.log(`Class created: ${className}`);
 
+    sectionIds[className] = {};
     for (const sectionName of sectionsData) {
       const section = await prisma.section.create({
         data: {
@@ -155,15 +157,32 @@ async function main() {
           classId: cls.id,
         },
       });
+      sectionIds[className][sectionName] = section.id;
       console.log(`Section created: ${className} - ${sectionName}`);
-      
-      if (className === 'Grade 10' && sectionName === 'A') {
-        grade10SectionAId = section.id;
-      }
-      if (className === 'Grade 11' && sectionName === 'B') {
-        grade11SectionBId = section.id;
-      }
     }
+  }
+
+  // Step 6b: Create Rooms (for timetable generation)
+  const roomNames = [
+    { name: 'Room 101', capacity: 35, type: RoomType.CLASSROOM },
+    { name: 'Room 102', capacity: 35, type: RoomType.CLASSROOM },
+    { name: 'Room 103', capacity: 35, type: RoomType.CLASSROOM },
+    { name: 'Room 104', capacity: 35, type: RoomType.CLASSROOM },
+    { name: 'Room 105', capacity: 35, type: RoomType.CLASSROOM },
+    { name: 'Room 106', capacity: 35, type: RoomType.CLASSROOM },
+    { name: 'Lab 1', capacity: 25, type: RoomType.LAB },
+    { name: 'Hall A', capacity: 100, type: RoomType.HALL },
+  ];
+  for (const r of roomNames) {
+    await prisma.room.create({
+      data: {
+        schoolId: defaultSchool.id,
+        name: r.name,
+        capacity: r.capacity,
+        type: r.type,
+      },
+    });
+    console.log(`Room created: ${r.name}`);
   }
 
   // Step 7: Create Teachers
@@ -193,28 +212,39 @@ async function main() {
     console.log(`Teacher created: teacher${i}@heckteck.com`);
   }
 
-  // Step 8: Create Allocations
-  // Assign Teacher 1 to Mathematics (Index 0) for Grade 10-A
-  const allocationMath10A = await prisma.subjectAllocation.create({
-    data: {
-      sectionId: grade10SectionAId,
-      subjectId: createdSubjects[0].id, // Mathematics
-      teacherId: teachers[0].id, // Teacher 1
-      academicYearId: currentYear.id,
-    },
-  });
-  console.log('Allocation created: Teacher 1 -> Math -> Grade 10-A');
+  // Step 8: Create Allocations (for timetable generation - each section gets all 5 subjects)
+  // Teacher rotation: T1,T2,T3,T4,T5 for Grade 10-A; T2,T3,T4,T5,T1 for 10-B; etc.
+  const allocationData: Array<{ section: string; subjectIdx: number; teacherIdx: number }> = [];
+  const sectionOrder = [
+    ['Grade 10', 'A'], ['Grade 10', 'B'], ['Grade 11', 'A'], ['Grade 11', 'B'],
+  ];
+  for (let s = 0; s < sectionOrder.length; s++) {
+    const [className, sectionName] = sectionOrder[s];
+    const offset = s; // Rotate teachers per section
+    for (let subj = 0; subj < 5; subj++) {
+      allocationData.push({
+        section: sectionIds[className][sectionName],
+        subjectIdx: subj,
+        teacherIdx: (offset + subj) % 5,
+      });
+    }
+  }
 
-  // Assign Teacher 2 to English (Index 1) for Grade 10-A
-  await prisma.subjectAllocation.create({
-    data: {
-      sectionId: grade10SectionAId,
-      subjectId: createdSubjects[1].id, // English
-      teacherId: teachers[1].id, // Teacher 2
-      academicYearId: currentYear.id,
-    },
-  });
-  console.log('Allocation created: Teacher 2 -> English -> Grade 10-A');
+  let allocationMath10A;
+  for (const a of allocationData) {
+    const alloc = await prisma.subjectAllocation.create({
+      data: {
+        sectionId: a.section,
+        subjectId: createdSubjects[a.subjectIdx].id,
+        teacherId: teachers[a.teacherIdx].id,
+        academicYearId: currentYear.id,
+      },
+    });
+    if (a.section === sectionIds['Grade 10']['A'] && a.subjectIdx === 0) {
+      allocationMath10A = alloc;
+    }
+  }
+  console.log(`Allocations created: ${allocationData.length} (all sections × 5 subjects)`);
 
   // Step 9: Create Parents
   const parentPassword = await argon2.hash('Parent@123');
@@ -244,7 +274,7 @@ async function main() {
   const studentRecords: StudentRecord[] = [];
 
   for (let i = 1; i <= 50; i++) {
-    const sectionId = i <= 25 ? grade10SectionAId : grade11SectionBId;
+    const sectionId = i <= 25 ? sectionIds['Grade 10']['A'] : sectionIds['Grade 11']['B'];
     const admissionNumber = `STU-2025-${i.toString().padStart(3, '0')}`;
 
     const studentUser = await prisma.user.create({

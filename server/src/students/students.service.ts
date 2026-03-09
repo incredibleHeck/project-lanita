@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
 import { UserEntity } from '../common/entities/user.entity';
 import * as argon2 from 'argon2';
 import { UserRole } from '@prisma/client';
@@ -187,6 +188,71 @@ export class StudentsService {
       throw new NotFoundException('Student not found');
     }
     return new UserEntity(user);
+  }
+
+  async update(id: string, dto: UpdateStudentDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: { profile: true, studentRecord: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Student not found');
+    }
+
+    if (user.role !== UserRole.STUDENT) {
+      throw new NotFoundException('Student not found');
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email,
+          id: { not: id },
+        },
+      });
+      if (existing) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const userUpdate: Record<string, unknown> = {};
+      if (dto.email !== undefined) userUpdate.email = dto.email;
+
+      if (Object.keys(userUpdate).length > 0) {
+        await tx.user.update({
+          where: { id },
+          data: userUpdate,
+        });
+      }
+
+      const profileUpdate: Record<string, unknown> = {};
+      if (dto.firstName !== undefined) profileUpdate.firstName = dto.firstName;
+      if (dto.lastName !== undefined) profileUpdate.lastName = dto.lastName;
+      if (dto.middleName !== undefined) profileUpdate.middleName = dto.middleName;
+      if (dto.dob !== undefined) profileUpdate.dob = new Date(dto.dob);
+      if (dto.gender !== undefined) profileUpdate.gender = dto.gender;
+      if (dto.contactNumber !== undefined) profileUpdate.contactNumber = dto.contactNumber;
+      if (dto.address !== undefined) profileUpdate.address = dto.address;
+      if (dto.avatarUrl !== undefined) profileUpdate.avatarUrl = dto.avatarUrl;
+
+      if (Object.keys(profileUpdate).length > 0 && user.profile) {
+        await tx.profile.update({
+          where: { userId: id },
+          data: profileUpdate,
+        });
+      }
+
+      if (dto.sectionId !== undefined && user.studentRecord) {
+        await tx.studentRecord.update({
+          where: { id: user.studentRecord.id },
+          data: { currentSectionId: dto.sectionId },
+        });
+      }
+    });
+
+    return this.findOne(id);
   }
 
   async assignSection(studentUserId: string, sectionId: string) {
