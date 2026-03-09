@@ -1,9 +1,10 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { firstValueFrom } from 'rxjs';
 import { GenerateTimetableDto } from './dto/generate-timetable.dto';
+import { UpdateSlotDto } from './dto/update-slot.dto';
 import { RoomType } from '@prisma/client';
 
 export interface TimetableSlotResult {
@@ -173,6 +174,72 @@ export class TimetableService {
         room: true,
       },
       orderBy: [{ dayOfWeek: 'asc' }, { periodNumber: 'asc' }],
+    });
+  }
+
+  async updateSlot(id: string, dto: UpdateSlotDto) {
+    const slot = await this.prisma.timetableSlot.findUnique({
+      where: { id },
+      include: { academicYear: true },
+    });
+    if (!slot) {
+      throw new NotFoundException('Timetable slot not found');
+    }
+
+    const newDay = dto.dayOfWeek ?? slot.dayOfWeek;
+    const newPeriod = dto.periodNumber ?? slot.periodNumber;
+
+    if (newDay === slot.dayOfWeek && newPeriod === slot.periodNumber) {
+      return slot;
+    }
+
+    const existingAtTarget = await this.prisma.timetableSlot.findFirst({
+      where: {
+        academicYearId: slot.academicYearId,
+        dayOfWeek: newDay,
+        periodNumber: newPeriod,
+        id: { not: id },
+      },
+    });
+
+    if (existingAtTarget) {
+      if (existingAtTarget.sectionId === slot.sectionId) {
+        throw new ConflictException('Section already has a class at this time');
+      }
+      if (existingAtTarget.teacherId === slot.teacherId) {
+        throw new ConflictException('Teacher already has a class at this time');
+      }
+      if (slot.roomId && existingAtTarget.roomId === slot.roomId) {
+        throw new ConflictException('Room already in use at this time');
+      }
+    }
+
+    const periodTimes: Record<number, { start: string; end: string }> = {
+      1: { start: '08:00', end: '08:45' },
+      2: { start: '08:50', end: '09:35' },
+      3: { start: '09:40', end: '10:25' },
+      4: { start: '10:40', end: '11:25' },
+      5: { start: '11:30', end: '12:15' },
+      6: { start: '13:00', end: '13:45' },
+      7: { start: '13:50', end: '14:35' },
+      8: { start: '14:40', end: '15:25' },
+    };
+    const times = periodTimes[newPeriod] ?? { start: slot.startTime, end: slot.endTime };
+
+    return this.prisma.timetableSlot.update({
+      where: { id },
+      data: {
+        dayOfWeek: newDay,
+        periodNumber: newPeriod,
+        startTime: times.start,
+        endTime: times.end,
+      },
+      include: {
+        subject: true,
+        section: { include: { class: true } },
+        teacher: { include: { profile: true } },
+        room: true,
+      },
     });
   }
 

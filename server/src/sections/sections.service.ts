@@ -25,6 +25,7 @@ export class SectionsService {
     return this.prisma.section.findMany({
       where: { classId },
       include: {
+        defaultRoom: true,
         _count: {
           select: { students: true },
         },
@@ -37,6 +38,7 @@ export class SectionsService {
     return this.prisma.section.findMany({
       include: {
         class: true,
+        defaultRoom: true,
         _count: {
           select: { students: true },
         },
@@ -48,7 +50,7 @@ export class SectionsService {
   async findOne(id: string) {
     return this.prisma.section.findUnique({
       where: { id },
-      include: { class: true },
+      include: { class: true, defaultRoom: true },
     });
   }
 

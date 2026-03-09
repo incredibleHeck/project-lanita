@@ -109,15 +109,19 @@ async function main() {
   console.log('3 Terms created for 2025/2026');
 
   // Step 5: Create Subjects
+  const subjectColors = ['#6366f1', '#22c55e', '#f97316', '#ec4899', '#06b6d4'];
   const subjectsData = ['Mathematics', 'English', 'Science', 'History', 'Computing'];
   const createdSubjects: Subject[] = [];
-  for (const name of subjectsData) {
+  for (let i = 0; i < subjectsData.length; i++) {
+    const name = subjectsData[i];
     const subject = await prisma.subject.create({
       data: {
         schoolId: defaultSchool.id,
         name,
         code: name.toUpperCase().substring(0, 4) + '101',
         isElective: false,
+        color: subjectColors[i % subjectColors.length],
+        isExaminable: true,
       },
     });
     createdSubjects.push(subject);

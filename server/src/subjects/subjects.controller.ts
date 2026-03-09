@@ -27,6 +27,11 @@ export class SubjectsController {
     return this.subjectsService.findAll();
   }
 
+  @Get(':id/usage')
+  getUsage(@Param('id') id: string) {
+    return this.subjectsService.getSubjectUsage(id);
+  }
+
   @Get(':id')
   // Authenticated users can read (no specific Role required)
   findOne(@Param('id') id: string) {

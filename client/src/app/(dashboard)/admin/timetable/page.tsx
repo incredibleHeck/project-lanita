@@ -1,6 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -12,6 +21,8 @@ import {
   Plus,
   Building2,
   Clock,
+  FileSpreadsheet,
+  Printer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -41,6 +52,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import api from '@/lib/axios';
+import { exportTimetableToExcel } from '@/lib/timetable-export';
+import { TimetablePrintView } from '@/components/timetable/timetable-print-view';
+import { DroppableCell } from '@/components/timetable/droppable-cell';
+import { DraggableSlot } from '@/components/timetable/draggable-slot';
+import { toast } from 'sonner';
 
 interface AcademicYear {
   id: string;
@@ -86,6 +102,7 @@ interface Subject {
   id: string;
   name: string;
   code: string;
+  color?: string;
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -105,7 +122,11 @@ const PERIODS = [
 export default function TimetablePage() {
   const queryClient = useQueryClient();
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'SECTION' | 'TEACHER'>('SECTION');
   const [selectedSection, setSelectedSection] = useState<string>('all');
+  const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [activeDragSlot, setActiveDragSlot] = useState<any>(null);
   const [generatedSlots, setGeneratedSlots] = useState<TimetableSlot[]>([]);
   const [generateStatus, setGenerateStatus] = useState<string>('');
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
@@ -146,6 +167,15 @@ export default function TimetablePage() {
       return response.data;
     },
   });
+
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers', 'all'],
+    queryFn: async () => {
+      const response = await api.get('/teachers', { params: { limit: 500 } });
+      return response.data;
+    },
+  });
+  const teachers = teachersData?.data ?? [];
 
   const { data: savedSlots, refetch: refetchSavedSlots } = useQuery({
     queryKey: ['timetableSlots', selectedAcademicYear],
@@ -201,24 +231,87 @@ export default function TimetablePage() {
     },
   });
 
+  const updateSlotMutation = useMutation({
+    mutationFn: async ({
+      slotId,
+      dayOfWeek,
+      periodNumber,
+    }: {
+      slotId: string;
+      dayOfWeek: number;
+      periodNumber: number;
+    }) => {
+      return api.patch(`/timetable/slots/${slotId}`, { dayOfWeek, periodNumber });
+    },
+    onSuccess: () => {
+      refetchSavedSlots();
+      toast.success('Slot moved successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message ?? 'Failed to move slot');
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragSlot(null);
+    const { active, over } = event;
+    if (!over || !active.data.current?.slot) return;
+
+    const slot = active.data.current.slot as any;
+    const slotId = slot.id;
+    if (!slotId) return;
+
+    const overData = over.data.current;
+    const targetDay = overData?.day;
+    const targetPeriod = overData?.period;
+    if (targetDay === undefined || targetPeriod === undefined) return;
+
+    const currentDay = slot.day_of_week ?? slot.dayOfWeek;
+    const currentPeriod = slot.period_number ?? slot.periodNumber;
+    if (targetDay === currentDay && targetPeriod === currentPeriod) return;
+
+    updateSlotMutation.mutate({
+      slotId,
+      dayOfWeek: targetDay,
+      periodNumber: targetPeriod,
+    });
+  };
+
   const sectionMap = new Map(sections?.map((s) => [s.id, s]) || []);
   const subjectMap = new Map(subjects?.map((s) => [s.id, s]) || []);
   const roomMap = new Map(rooms?.map((r) => [r.id, r]) || []);
 
   const displaySlots = generatedSlots.length > 0 ? generatedSlots : (savedSlots || []);
 
-  const filteredSlots = selectedSection === 'all'
-    ? displaySlots
-    : displaySlots.filter((slot: any) =>
-        slot.section_id === selectedSection || slot.sectionId === selectedSection
-      );
+  const filteredSlots =
+    viewMode === 'SECTION'
+      ? selectedSection === 'all'
+        ? displaySlots
+        : displaySlots.filter(
+            (slot: any) =>
+              slot.section_id === selectedSection || slot.sectionId === selectedSection
+          )
+      : selectedTeacher === 'all'
+        ? displaySlots
+        : displaySlots.filter(
+            (slot: any) =>
+              slot.teacher_id === selectedTeacher || slot.teacherId === selectedTeacher
+          );
 
-  const getSlotForCell = (day: number, period: number, sectionId: string) => {
+  const getSlotForCell = (day: number, period: number, entityId: string) => {
     return filteredSlots.find((slot: any) => {
       const slotDay = slot.day_of_week ?? slot.dayOfWeek;
       const slotPeriod = slot.period_number ?? slot.periodNumber;
-      const slotSectionId = slot.section_id ?? slot.sectionId;
-      return slotDay === day && slotPeriod === period && slotSectionId === sectionId;
+      if (viewMode === 'SECTION') {
+        const slotSectionId = slot.section_id ?? slot.sectionId;
+        return slotDay === day && slotPeriod === period && slotSectionId === entityId;
+      }
+      const slotTeacherId = slot.teacher_id ?? slot.teacherId;
+      return slotDay === day && slotPeriod === period && slotTeacherId === entityId;
     });
   };
 
@@ -228,6 +321,12 @@ export default function TimetablePage() {
     return subject?.name || slot.subject?.name || 'Unknown';
   };
 
+  const getSubjectColor = (slot: any) => {
+    const subjectId = slot.subject_id ?? slot.subjectId;
+    const subject = subjectMap.get(subjectId);
+    return subject?.color || '#6366f1';
+  };
+
   const getRoomName = (slot: any) => {
     const roomId = slot.room_id ?? slot.roomId;
     if (!roomId) return 'TBD';
@@ -235,7 +334,60 @@ export default function TimetablePage() {
     return room?.name || slot.room?.name || 'TBD';
   };
 
+  const getSectionDisplayName = (slot: any) => {
+    if (slot.section?.class && slot.section?.name) {
+      return `${slot.section.class.name} - ${slot.section.name}`;
+    }
+    const sid = slot.section_id ?? slot.sectionId;
+    const sec = sectionMap.get(sid);
+    return sec ? `${sec.class.name} - ${sec.name}` : 'Unknown';
+  };
+
   const selectedSectionObj = sectionMap.get(selectedSection);
+  const selectedTeacherObj = teachers.find((t: any) => t.id === selectedTeacher);
+
+  const selectedYearName = academicYears?.find((y) => y.id === selectedAcademicYear)?.name ?? '';
+
+  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Timetable_${selectedSectionObj ? `${selectedSectionObj.class.name}-${selectedSectionObj.name}` : 'All'}`,
+  });
+
+  const handleExportExcel = async () => {
+    try {
+      await exportTimetableToExcel(
+        displaySlots as any[],
+        viewMode,
+        sections ?? [],
+        subjects ?? [],
+        teachers,
+        rooms ?? [],
+        selectedYearName,
+        'HeckTeck SMS'
+      );
+      toast.success('Timetable exported to Excel');
+    } catch (err) {
+      console.error('Export failed:', err);
+      toast.error('Failed to export timetable');
+    }
+  };
+
+  const hasSavedSlots = generatedSlots.length === 0 && (savedSlots?.length ?? 0) > 0;
+  const slotsHaveIds = filteredSlots.some((s: any) => s.id);
+  const canEdit = hasSavedSlots && slotsHaveIds;
+
+  const currentEntityId = viewMode === 'SECTION' ? selectedSection : selectedTeacher;
+  const currentEntityName =
+    viewMode === 'SECTION'
+      ? selectedSectionObj
+        ? `${selectedSectionObj.class.name} - ${selectedSectionObj.name}`
+        : ''
+      : selectedTeacherObj
+        ? [selectedTeacherObj.profile?.firstName, selectedTeacherObj.profile?.lastName]
+            .filter(Boolean)
+            .join(' ') || selectedTeacherObj.email
+        : '';
 
   return (
     <div className="space-y-6 p-6">
@@ -289,6 +441,38 @@ export default function TimetablePage() {
               )}
               Save Timetable
             </Button>
+          )}
+          {displaySlots.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExportExcel}
+                disabled={!sections?.length}
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export to Excel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handlePrint()}
+                disabled={
+                  (viewMode === 'SECTION' && (selectedSection === 'all' || !selectedSectionObj)) ||
+                  (viewMode === 'TEACHER' && (selectedTeacher === 'all' || !selectedTeacherObj))
+                }
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print
+              </Button>
+              {canEdit && (
+                <Button
+                  variant={isEditMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setIsEditMode(!isEditMode)}
+                >
+                  {isEditMode ? 'Done Editing' : 'Edit Schedule'}
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -439,7 +623,7 @@ export default function TimetablePage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -449,74 +633,212 @@ export default function TimetablePage() {
                 {generatedSlots.length > 0 ? 'Preview - click Save to persist' : 'Saved schedule'}
               </CardDescription>
             </div>
-            <Select value={selectedSection} onValueChange={setSelectedSection}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Filter by section" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
-                {sections?.map((section) => (
-                  <SelectItem key={section.id} value={section.id}>
-                    {section.class.name} - {section.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex rounded-lg border p-1">
+                <Button
+                  variant={viewMode === 'SECTION' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    setViewMode('SECTION');
+                    setSelectedTeacher('all');
+                  }}
+                >
+                  By Section
+                </Button>
+                <Button
+                  variant={viewMode === 'TEACHER' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    setViewMode('TEACHER');
+                    setSelectedSection('all');
+                  }}
+                >
+                  By Teacher
+                </Button>
+              </div>
+              {viewMode === 'SECTION' ? (
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger className="w-[250px]">
+                    <SelectValue placeholder="Filter by section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {sections?.map((section) => (
+                      <SelectItem key={section.id} value={section.id}>
+                        {section.class.name} - {section.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                  <SelectTrigger className="w-[250px]">
+                    <SelectValue placeholder="Filter by teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teachers</SelectItem>
+                    {teachers.map((teacher: any) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {[teacher.profile?.firstName, teacher.profile?.lastName]
+                          .filter(Boolean)
+                          .join(' ') || teacher.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {selectedSection !== 'all' && selectedSectionObj ? (
+          {(viewMode === 'SECTION' && selectedSection !== 'all' && selectedSectionObj) ||
+          (viewMode === 'TEACHER' && selectedTeacher !== 'all' && selectedTeacherObj) ? (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Period</TableHead>
-                    {DAYS.map((day, i) => (
-                      <TableHead key={i} className="text-center min-w-[150px]">
-                        {day}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {PERIODS.map((period) => (
-                    <TableRow key={period.number}>
-                      <TableCell className="font-medium">
-                        <div className="text-sm">{period.number}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {period.start}-{period.end}
-                        </div>
-                      </TableCell>
-                      {DAYS.map((_, dayIndex) => {
-                        const slot = getSlotForCell(dayIndex, period.number, selectedSection);
-                        return (
-                          <TableCell key={dayIndex} className="text-center p-2">
-                            {slot ? (
-                              <div className="bg-primary/10 rounded p-2 text-sm">
-                                <div className="font-medium">{getSubjectName(slot)}</div>
+              <DndContext
+                sensors={sensors}
+                onDragStart={(e) => {
+                  const slot = e.active.data.current?.slot;
+                  if (slot) setActiveDragSlot(slot);
+                }}
+                onDragEnd={handleDragEnd}
+              >
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Period</TableHead>
+                      {DAYS.map((day, i) => (
+                        <TableHead key={i} className="text-center min-w-[150px]">
+                          {day}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {PERIODS.map((period) => (
+                      <TableRow key={period.number}>
+                        <TableCell className="font-medium">
+                          <div className="text-sm">{period.number}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {period.start}-{period.end}
+                          </div>
+                        </TableCell>
+                        {DAYS.map((_, dayIndex) => {
+                          const entityId =
+                            viewMode === 'SECTION' ? selectedSection : selectedTeacher;
+                          const slot = getSlotForCell(dayIndex, period.number, entityId);
+                          const cellId = `cell-${dayIndex}-${period.number}`;
+                          const slotColor = slot ? getSubjectColor(slot) : undefined;
+                          const content = slot ? (
+                            isEditMode && slot.id ? (
+                              <DraggableSlot
+                                id={slot.id}
+                                slot={slot}
+                                getPrimaryLabel={
+                                  viewMode === 'SECTION' ? getSubjectName : getSectionDisplayName
+                                }
+                                getSecondaryLabel={
+                                  viewMode === 'SECTION' ? getRoomName : getSubjectName
+                                }
+                                color={slotColor}
+                                disabled={!isEditMode || updateSlotMutation.isPending}
+                              />
+                            ) : (
+                              <div
+                                className="rounded p-2 text-sm border-l-4"
+                                style={
+                                  slotColor
+                                    ? {
+                                        borderLeftColor: slotColor,
+                                        backgroundColor: `${slotColor}15`,
+                                      }
+                                    : { borderLeftColor: 'transparent' }
+                                }
+                              >
+                                <div className="font-medium">
+                                  {viewMode === 'SECTION'
+                                    ? getSubjectName(slot)
+                                    : getSectionDisplayName(slot)}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {getRoomName(slot)}
+                                  {viewMode === 'SECTION'
+                                    ? getRoomName(slot)
+                                    : getSubjectName(slot)}
                                 </div>
                               </div>
-                            ) : (
-                              <div className="text-muted-foreground text-xs">-</div>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                            )
+                          ) : (
+                            <div className="text-muted-foreground text-xs">-</div>
+                          );
+                          return (
+                            <TableCell key={dayIndex} className="text-center p-2">
+                              {isEditMode ? (
+                                <DroppableCell
+                                  id={cellId}
+                                  day={dayIndex}
+                                  period={period.number}
+                                  className="min-h-[60px]"
+                                >
+                                  {content}
+                                </DroppableCell>
+                              ) : (
+                                content
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <DragOverlay>
+                  {activeDragSlot ? (
+                    <div
+                      className="rounded p-2 text-sm shadow-lg border-l-4"
+                      style={{
+                        borderLeftColor: getSubjectColor(activeDragSlot),
+                        backgroundColor: `${getSubjectColor(activeDragSlot)}15`,
+                      }}
+                    >
+                      <div className="font-medium">
+                        {viewMode === 'SECTION'
+                          ? getSubjectName(activeDragSlot)
+                          : getSectionDisplayName(activeDragSlot)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {viewMode === 'SECTION'
+                          ? getRoomName(activeDragSlot)
+                          : getSubjectName(activeDragSlot)}
+                      </div>
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </div>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a section to view its timetable</p>
+              <p>
+                Select a {viewMode === 'SECTION' ? 'section' : 'teacher'} to view its timetable
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {currentEntityId !== 'all' && currentEntityName && (
+        <div className="hidden">
+          <TimetablePrintView
+            ref={printRef}
+            slots={filteredSlots}
+            viewMode={viewMode}
+            entityId={currentEntityId}
+            entityName={currentEntityName}
+            getSlotForCell={getSlotForCell}
+            getSubjectName={viewMode === 'SECTION' ? getSubjectName : getSectionDisplayName}
+            getSecondaryLabel={viewMode === 'SECTION' ? getRoomName : getSubjectName}
+          />
+        </div>
+      )}
 
       {rooms && rooms.length > 0 && (
         <Card>

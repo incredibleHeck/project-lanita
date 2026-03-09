@@ -16,6 +16,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole, RoomType } from '@prisma/client';
 import { TimetableService } from './timetable.service';
 import { GenerateTimetableDto } from './dto/generate-timetable.dto';
+import { UpdateSlotDto } from './dto/update-slot.dto';
 
 @ApiTags('Timetable')
 @ApiBearerAuth()
@@ -37,6 +38,12 @@ export class TimetableController {
     @Body() body: { slots: any[] },
   ) {
     return this.timetableService.saveTimetable(academicYearId, body.slots);
+  }
+
+  @Patch('slots/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  updateSlot(@Param('id') id: string, @Body() dto: UpdateSlotDto) {
+    return this.timetableService.updateSlot(id, dto);
   }
 
   @Get()

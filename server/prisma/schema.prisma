@@ -219,8 +219,10 @@ model Section {
   school         School?             @relation(fields: [schoolId], references: [id])
   name           String
   capacity       Int
-  class          Class               @relation(fields: [classId], references: [id])
+  class          Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId        String              @db.Uuid
+  defaultRoom    Room?               @relation(fields: [defaultRoomId], references: [id])
+  defaultRoomId  String?             @db.Uuid
   students       StudentRecord[]
   allocations    SubjectAllocation[]
   timetableSlots TimetableSlot[]
@@ -231,21 +233,28 @@ model Section {
 }
 
 model Subject {
-  id             String              @id @default(uuid()) @db.Uuid
-  schoolId       String?             @db.Uuid
-  school         School?             @relation(fields: [schoolId], references: [id])
-  name           String
-  code           String
-  description    String?
-  subjectType    SubjectType         @default(CORE)
-  isElective     Boolean             @default(false)
-  periodsPerWeek Int                 @default(3)
-  requiresLab    Boolean             @default(false)
-  allocations    SubjectAllocation[]
-  results        Result[]
-  timetableSlots TimetableSlot[]
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  id               String              @id @default(uuid()) @db.Uuid
+  schoolId         String?             @db.Uuid
+  school           School?             @relation(fields: [schoolId], references: [id])
+  name             String
+  code             String
+  description      String?
+  subjectType      SubjectType         @default(CORE)
+  isElective       Boolean             @default(false)
+  periodsPerWeek   Int                 @default(3)
+  requiresLab      Boolean             @default(false)
+  color            String              @default("#6366f1")
+  isExaminable     Boolean             @default(true)
+  isSingleResource Boolean             @default(false)
+  requiredRoomId   String?             @db.Uuid
+  requiredRoomType RoomType?
+  preferredRoomIds Json?
+  requiredRoom     Room?               @relation(fields: [requiredRoomId], references: [id])
+  allocations      SubjectAllocation[]
+  results          Result[]
+  timetableSlots   TimetableSlot[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -456,17 +465,19 @@ model Payment {
 }
 
 model Room {
-  id        String          @id @default(uuid()) @db.Uuid
-  schoolId  String?         @db.Uuid
-  school    School?         @relation(fields: [schoolId], references: [id])
-  name      String
-  capacity  Int
-  type      RoomType        @default(CLASSROOM)
-  building  String?
-  floor     Int?
-  slots     TimetableSlot[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id                 String          @id @default(uuid()) @db.Uuid
+  schoolId           String?         @db.Uuid
+  school             School?         @relation(fields: [schoolId], references: [id])
+  name               String
+  capacity           Int
+  type               RoomType        @default(CLASSROOM)
+  building           String?
+  floor              Int?
+  slots              TimetableSlot[]
+  requiredBySubjects Subject[]
+  defaultSections    Section[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@unique([schoolId, name])
   @@index([schoolId])

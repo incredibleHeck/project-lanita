@@ -1,4 +1,12 @@
-import { IsInt, IsNotEmpty, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateSectionDto {
   @IsString()
@@ -12,4 +20,9 @@ export class CreateSectionDto {
   @IsUUID()
   @IsNotEmpty()
   classId: string;
+
+  @IsOptional()
+  @ValidateIf((o) => o.defaultRoomId != null && o.defaultRoomId !== '')
+  @IsUUID()
+  defaultRoomId?: string | null;
 }
