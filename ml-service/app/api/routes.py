@@ -4,7 +4,7 @@ from typing import List, Optional
 import numpy as np
 
 from app.features.feature_engineering import extract_student_features
-from app.main import get_predictor
+from app.predictor import get_predictor
 
 router = APIRouter()
 

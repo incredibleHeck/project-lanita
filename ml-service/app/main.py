@@ -6,24 +6,21 @@ import os
 from app.api.routes import router as prediction_router
 from app.api.timetable_routes import router as timetable_router
 from app.models.dropout_model import DropoutPredictor
-
-predictor: DropoutPredictor | None = None
+from app.predictor import set_predictor, get_predictor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global predictor
     model_path = os.environ.get("MODEL_PATH", "trained_models/dropout_classifier.pkl")
-    predictor = DropoutPredictor()
-    
+    pred = DropoutPredictor()
     if os.path.exists(model_path):
-        predictor.load(model_path)
+        pred.load(model_path)
         print(f"Loaded model from {model_path}")
     else:
         print(f"No pre-trained model found at {model_path}. Using untrained predictor.")
-    
+    set_predictor(pred)
     yield
-    
+    set_predictor(None)
     print("Shutting down ML service")
 
 
@@ -48,10 +45,12 @@ app.include_router(timetable_router, prefix="/timetable", tags=["Timetable"])
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "model_loaded": predictor is not None and predictor.is_trained,
-    }
+    try:
+        p = get_predictor()
+        model_loaded = p.is_trained
+    except RuntimeError:
+        model_loaded = False
+    return {"status": "healthy", "model_loaded": model_loaded}
 
 
 @app.get("/")
@@ -68,7 +67,3 @@ async def root():
     }
 
 
-def get_predictor() -> DropoutPredictor:
-    if predictor is None:
-        raise RuntimeError("Predictor not initialized")
-    return predictor

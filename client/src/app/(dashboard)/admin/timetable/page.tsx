@@ -200,9 +200,16 @@ export default function TimetablePage() {
     onSuccess: (data) => {
       setGeneratedSlots(data.slots);
       setGenerateStatus(data.status);
+      toast.success(data.message || `Generated ${data.slots?.length ?? 0} slots`);
     },
     onError: (error: any) => {
       setGenerateStatus('ERROR');
+      const raw =
+        error?.response?.data?.message ??
+        error?.message ??
+        'Failed to generate timetable';
+      const msg = Array.isArray(raw) ? raw.join(', ') : String(raw);
+      toast.error(msg);
       console.error('Generation failed:', error);
     },
   });

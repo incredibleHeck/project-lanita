@@ -5,14 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PieChartIcon } from "lucide-react";
 
+// Colors visible on dark/black backgrounds - no black, cream for dark slots
 const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--chart-2, 217 91% 60%))",
-  "hsl(var(--chart-3, 142 71% 45%))",
-  "hsl(var(--chart-4, 47 100% 50%))",
-  "hsl(var(--chart-5, 280 65% 60%))",
-  "hsl(var(--chart-6, 12 76% 61%))",
+  "#FFF8E7", // cream
+  "#60A5FA", // light blue
+  "#4ADE80", // green
+  "#FACC15", // yellow
+  "#A78BFA", // purple
+  "#F87171", // coral/light red
 ];
+const CHART_STROKE = "#FFF8E7"; // cream stroke between segments (visible on black)
 
 interface DistributionDataPoint {
   name: string;
@@ -65,7 +67,7 @@ export function DistributionChart({ data, isLoading }: DistributionChartProps) {
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
-                      className="stroke-background"
+                      stroke={CHART_STROKE}
                       strokeWidth={2}
                     />
                   ))}

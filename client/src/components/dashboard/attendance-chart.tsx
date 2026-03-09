@@ -52,21 +52,19 @@ export function AttendanceChart({ data, isLoading }: AttendanceChartProps) {
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  className="stroke-muted"
+                  stroke="#6B7280"
                   vertical={false}
                 />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "#9CA3AF" }}
                   tickLine={false}
                   axisLine={false}
-                  className="fill-muted-foreground"
                 />
                 <YAxis
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "#9CA3AF" }}
                   tickLine={false}
                   axisLine={false}
-                  className="fill-muted-foreground"
                 />
                 <Tooltip
                   contentStyle={{
@@ -83,13 +81,13 @@ export function AttendanceChart({ data, isLoading }: AttendanceChartProps) {
                 <Bar
                   dataKey="present"
                   name="Present"
-                  fill="hsl(var(--primary))"
+                  fill="#4ADE80"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="absent"
                   name="Absent"
-                  fill="hsl(var(--destructive))"
+                  fill="#F87171"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
