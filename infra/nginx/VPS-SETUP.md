@@ -149,7 +149,29 @@ sudo systemctl status nginx
 
 1. Open `https://lanita.com` in your browser
 2. Check for the padlock icon (valid SSL)
-3. Test API: `https://lanita.com/api/health` (if you have a health endpoint)
+3. Test API: `https://lanita.com/api/health` – should return `{"status":"ok","database":"connected"}`
+
+---
+
+## Production .env Configuration
+
+Before deploying with Docker on the VPS, create a `.env` file in the project root. Use `.env.production.example` as a template:
+
+```bash
+cp .env.production.example .env
+```
+
+Required variables for production (Nginx reverse proxy setup):
+
+| Variable | Value | Reason |
+|----------|-------|--------|
+| WEB_PORT | 4000 | Must match Nginx frontend proxy (127.0.0.1:4000) |
+| API_URL | https://lanita.com/api | Client must use full path including /api |
+| CORS_ORIGIN | https://lanita.com,https://www.lanita.com | Allow production domain |
+| JWT_ACCESS_SECRET | (your secret) | Required; do not use default in production |
+| JWT_REFRESH_SECRET | (your secret) | Required; do not use default in production |
+
+The deploy workflow does not inject secrets; set them in the VPS `.env` file before running `docker-compose up`.
 
 ---
 
@@ -168,7 +190,10 @@ docker ps
 
 ### Test Backend Directly
 ```bash
+# Backend health check – should return {"status":"ok","database":"connected"}
 curl http://127.0.0.1:4001/health
+
+# Frontend (Next.js)
 curl http://127.0.0.1:4000
 ```
 

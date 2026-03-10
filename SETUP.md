@@ -360,9 +360,9 @@ docker-compose up -d
 
 # Option 1: With .env file (recommended)
 echo "POSTGRES_PASSWORD=your-secure-password" > .env
-echo "JWT_SECRET=your-jwt-secret" >> .env
+echo "JWT_ACCESS_SECRET=your-jwt-secret" >> .env
 echo "JWT_REFRESH_SECRET=your-refresh-secret" >> .env
-docker-compose -f docker-compose.prod.yml up -d --build
+docker-compose -f docker-compose.yml up -d --build
 
 # Option 2: Direct (uses default placeholders)
-docker-compose -f docker-compose.prod.yml up -d --build
+docker-compose -f docker-compose.yml up -d --build

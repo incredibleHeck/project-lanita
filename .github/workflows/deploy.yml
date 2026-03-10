@@ -13,10 +13,10 @@
 #                   Generate with: ssh-keygen -t ed25519 -C "github-actions"
 #                   Add public key to VPS: ~/.ssh/authorized_keys
 #
-# OPTIONAL SECRETS (for production):
-# 4. POSTGRES_PASSWORD   - Database password
-# 5. JWT_SECRET          - JWT signing key
-# 6. JWT_REFRESH_SECRET  - JWT refresh token key
+# VPS .env (set on server, not via GitHub Secrets):
+# The deploy workflow does not inject env vars. Create .env on the VPS using
+# .env.production.example. Required: JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,
+# POSTGRES_PASSWORD, API_URL, CORS_ORIGIN, WEB_PORT=4000
 # =============================================================================
 
 name: Deploy to VPS
