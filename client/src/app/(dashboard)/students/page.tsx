@@ -21,7 +21,8 @@ interface StudentsResponse {
   meta: {
     total: number;
     page: number;
-    lastPage: number;
+    limit: number;
+    totalPages: number;
   };
 }
 
@@ -126,33 +127,16 @@ export default function StudentsPage() {
             Failed to load students. Please try again.
           </div>
         ) : (
-          <DataTable columns={columns} data={students} />
+          <DataTable
+            columns={columns}
+            data={students}
+            page={page}
+            pageCount={meta?.totalPages ?? 0}
+            onPageChange={setPage}
+            isLoading={isLoading}
+          />
         )}
       </div>
-
-      {meta && meta.lastPage > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1 || isLoading}
-          >
-            Previous
-          </Button>
-          <div className="text-sm text-gray-500">
-            Page {page} of {meta.lastPage}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(meta.lastPage, p + 1))}
-            disabled={page === meta.lastPage || isLoading}
-          >
-            Next
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

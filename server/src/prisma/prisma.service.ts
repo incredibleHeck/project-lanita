@@ -119,4 +119,22 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get auditLog() {
     return this._client.auditLog;
   }
+  get course() {
+    return this._client.course;
+  }
+  get courseModule() {
+    return this._client.courseModule;
+  }
+  get lesson() {
+    return this._client.lesson;
+  }
+  get assignment() {
+    return this._client.assignment;
+  }
+  get submission() {
+    return this._client.submission;
+  }
+  get paymentTransaction() {
+    return this._client.paymentTransaction;
+  }
 }

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, CreditCard } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { PaystackPaymentButton } from "@/components/billing/paystack-button";
 
 export type Invoice = {
   id: string;
@@ -37,9 +38,17 @@ const statusConfig = {
   OVERDUE: { label: "Overdue", variant: "destructive" as const, className: "bg-red-700 hover:bg-red-800" },
 };
 
+export interface CreateInvoiceColumnsOptions {
+  isParentView?: boolean;
+  onPaystackSuccess?: () => void;
+}
+
 export const createInvoiceColumns = (
-  onRecordPayment: (invoice: Invoice) => void
-): ColumnDef<Invoice>[] => [
+  onRecordPayment: (invoice: Invoice) => void,
+  options?: CreateInvoiceColumnsOptions
+): ColumnDef<Invoice>[] => {
+  const { isParentView, onPaystackSuccess } = options ?? {};
+  const baseColumns: ColumnDef<Invoice>[] = [
   {
     accessorKey: "studentName",
     header: "Student Name",
@@ -108,6 +117,18 @@ export const createInvoiceColumns = (
       const invoice = row.original;
       const canPay = invoice.status !== "PAID";
 
+      if (isParentView && onPaystackSuccess) {
+        return canPay ? (
+          <PaystackPaymentButton
+            invoiceId={invoice.id}
+            size="sm"
+            onSuccess={onPaystackSuccess}
+          />
+        ) : (
+          <span className="text-sm text-muted-foreground">Fully Paid</span>
+        );
+      }
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -134,3 +155,5 @@ export const createInvoiceColumns = (
     },
   },
 ];
+  return baseColumns;
+};

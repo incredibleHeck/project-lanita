@@ -17,6 +17,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { BillingService } from './billing.service';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
+import { InitializePaystackDto } from './dto/initialize-paystack.dto';
 
 @ApiTags('Billing')
 @ApiBearerAuth()
@@ -53,6 +54,15 @@ export class BillingController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   recordPayment(@Body() dto: RecordPaymentDto) {
     return this.billingService.recordPayment(dto);
+  }
+
+  @Post('paystack/initialize')
+  @Roles(UserRole.PARENT)
+  initializePaystack(
+    @Body() dto: InitializePaystackDto,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.billingService.initializePaystackPayment(dto, req.user.sub);
   }
 
   @Get('statement/:studentId')

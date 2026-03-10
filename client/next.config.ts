@@ -16,6 +16,8 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Turbopack config (Next 16 default) - empty enables it with webpack compat
+  turbopack: {},
   experimental: {
     viewTransition: true,
   },

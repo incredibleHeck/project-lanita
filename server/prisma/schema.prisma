@@ -95,6 +95,12 @@ enum AuditAction {
   EXPORT
 }
 
+enum PaymentTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model School {
   id            String   @id @default(uuid()) @db.Uuid
   name          String
@@ -125,6 +131,12 @@ model School {
   notificationLogs NotificationLog[]
   messageThreads   MessageThread[]
   auditLogs       AuditLog[]
+  courses         Course[]
+  courseModules   CourseModule[]
+  lessons        Lesson[]
+  assignments    Assignment[]
+  submissions    Submission[]
+  paymentTransactions PaymentTransaction[]
 }
 
 model AuditLog {
@@ -178,6 +190,9 @@ model User {
   threadsAsParticipantB MessageThread[] @relation("ThreadParticipantB")
   messagesSent         Message[]
   announcements        Announcement[]
+  coursesTaught        Course[]
+   paymentTransactionsPaid PaymentTransaction[] @relation("PaymentTransactionsPaid")
+  submissionsGraded    Submission[] @relation("SubmissionGradedBy")
 }
 
 model Profile {
@@ -253,6 +268,7 @@ model Subject {
   allocations      SubjectAllocation[]
   results          Result[]
   timetableSlots   TimetableSlot[]
+  courses          Course[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -298,6 +314,7 @@ model StudentRecord {
   results        Result[]
   invoices       StudentInvoice[]
   messageThreads MessageThread[]
+  submissions    Submission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -341,6 +358,7 @@ model AcademicYear {
   terms          Term[]
   feeStructures  FeeStructure[]
   timetableSlots TimetableSlot[]
+  courses        Course[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -435,6 +453,7 @@ model StudentInvoice {
   status        InvoiceStatus @default(PENDING)
   dueDate       DateTime
   payments      Payment[]
+  paymentTransactions PaymentTransaction[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -462,6 +481,27 @@ model Payment {
   @@unique([schoolId, receiptNumber])
   @@index([invoiceId])
   @@index([schoolId])
+}
+
+model PaymentTransaction {
+  id        String                   @id @default(uuid()) @db.Uuid
+  reference String                   @unique
+  amount    Float
+  status    PaymentTransactionStatus @default(PENDING)
+  channel   String?
+  invoiceId String                   @db.Uuid
+  invoice   StudentInvoice           @relation(fields: [invoiceId], references: [id])
+  paidById  String                   @db.Uuid
+  paidBy    User                     @relation("PaymentTransactionsPaid", fields: [paidById], references: [id])
+  tenantId  String                   @db.Uuid
+  tenant    School                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@index([invoiceId])
+  @@index([paidById])
+  @@index([tenantId])
+  @@index([status])
 }
 
 model Room {
@@ -593,5 +633,106 @@ model Announcement {
 
   @@index([scope, scopeId])
   @@index([authorId])
+  @@index([schoolId])
+}
+
+// --- LMS ---
+
+model Course {
+  id              String        @id @default(uuid()) @db.Uuid
+  schoolId        String        @db.Uuid
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name            String
+  code            String?
+  description     String?
+  subjectId       String        @db.Uuid
+  subject         Subject      @relation(fields: [subjectId], references: [id])
+  teacherId       String?       @db.Uuid
+  teacher         User?        @relation(fields: [teacherId], references: [id])
+  academicYearId  String?      @db.Uuid
+  academicYear    AcademicYear? @relation(fields: [academicYearId], references: [id])
+  modules         CourseModule[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([subjectId])
+}
+
+model CourseModule {
+  id          String    @id @default(uuid()) @db.Uuid
+  schoolId    String    @db.Uuid
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  courseId    String    @db.Uuid
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int       @default(0)
+  lessons     Lesson[]
+  assignments Assignment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([schoolId])
+  @@index([courseId])
+}
+
+model Lesson {
+  id         String       @id @default(uuid()) @db.Uuid
+  title      String
+  content    String?      @db.Text
+  videoUrl   String?
+  orderIndex Int          @default(0)
+  moduleId   String       @db.Uuid
+  module     CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  schoolId   String       @db.Uuid
+  school     School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([moduleId])
+  @@index([schoolId])
+}
+
+model Assignment {
+  id          String       @id @default(uuid()) @db.Uuid
+  title       String
+  description String?      @db.Text
+  dueDate     DateTime?
+  maxScore    Float?
+  moduleId    String       @db.Uuid
+  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  schoolId    String       @db.Uuid
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([moduleId])
+  @@index([schoolId])
+}
+
+model Submission {
+  id           String        @id @default(uuid()) @db.Uuid
+  content      String?       @db.Text
+  fileUrl      String?
+  score        Float?
+  feedback     String?       @db.Text
+  gradedAt     DateTime?
+  gradedById   String?       @db.Uuid
+  gradedBy     User?         @relation("SubmissionGradedBy", fields: [gradedById], references: [id])
+  assignmentId String        @db.Uuid
+  assignment   Assignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String        @db.Uuid
+  student      StudentRecord @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId     String        @db.Uuid
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
   @@index([schoolId])
 }

@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "@/lib/axios";
 import { useAuth } from "@/hooks/use-auth";
 import { RoleGuard } from "@/components/role-guard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,14 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Wallet,
   AlertCircle,
   DollarSign,
@@ -33,8 +23,12 @@ import {
   Clock,
   Users,
 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/format";
-import { MobileMoneyDialog } from "@/components/billing/mobile-money-dialog";
+import { formatCurrency } from "@/lib/format";
+import { BillingDataTable } from "@/components/billing/billing-data-table";
+import {
+  createInvoiceColumns,
+  type Invoice as InvoiceColumnType,
+} from "@/components/billing/invoice-columns";
 
 interface Child {
   id: string;
@@ -55,7 +49,7 @@ interface Child {
   };
 }
 
-interface Invoice {
+interface StatementInvoice {
   id: string;
   invoiceNumber: string;
   term: string;
@@ -78,7 +72,7 @@ interface Statement {
     totalPaid: number;
     balance: number;
   };
-  invoices: Invoice[];
+  invoices: StatementInvoice[];
 }
 
 export default function ParentBillingPage() {
@@ -95,8 +89,6 @@ function BillingContent() {
   const preselectedChildId = searchParams.get("childId");
 
   const [selectedChildId, setSelectedChildId] = useState<string | null>(preselectedChildId);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const { data: childrenData, isLoading: childrenLoading } = useQuery({
     queryKey: ["parent", "children", user?.id],
@@ -116,7 +108,8 @@ function BillingContent() {
     }
   }, [children, selectedChildId, preselectedChildId]);
 
-  const { data: statement, isLoading: statementLoading, refetch: refetchStatement } = useQuery({
+  const queryClient = useQueryClient();
+  const { data: statement, isLoading: statementLoading } = useQuery({
     queryKey: ["billing", "statement", selectedChildId],
     queryFn: async () => {
       const response = await axios.get<Statement>(`/billing/statement/${selectedChildId}`);
@@ -125,29 +118,32 @@ function BillingContent() {
     enabled: !!selectedChildId,
   });
 
-  const handlePayNow = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setPaymentDialogOpen(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    refetchStatement();
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PAID":
-        return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
-      case "PARTIAL":
-        return <Badge className="bg-yellow-100 text-yellow-800">Partial</Badge>;
-      case "OVERDUE":
-        return <Badge className="bg-red-100 text-red-800">Overdue</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800">Pending</Badge>;
-    }
-  };
-
   const selectedChild = children.find((c) => c.id === selectedChildId);
+
+  const mapInvoiceToColumnType = (inv: StatementInvoice): InvoiceColumnType => ({
+    ...inv,
+    studentId: statement!.student.id,
+    studentName: statement!.student.name,
+    admissionNumber: statement!.student.admissionNumber,
+    class: selectedChild?.currentSection?.class?.name ?? "",
+    section: selectedChild?.currentSection?.name ?? "",
+    createdAt: inv.dueDate,
+  });
+
+  const parentInvoiceColumns = createInvoiceColumns(
+    () => {},
+    {
+      isParentView: true,
+      onPaystackSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: ["billing", "statement", selectedChildId],
+        }),
+    }
+  );
+
+  const mappedInvoices = statement
+    ? statement.invoices.map(mapInvoiceToColumnType)
+    : [];
 
   if (childrenLoading) {
     return (
@@ -290,56 +286,10 @@ function BillingContent() {
                   <p className="text-muted-foreground">No invoices found</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice No.</TableHead>
-                        <TableHead>Term</TableHead>
-                        <TableHead className="text-right">Total Amount</TableHead>
-                        <TableHead className="text-right">Paid</TableHead>
-                        <TableHead className="text-right">Balance</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {statement.invoices.map((invoice) => (
-                        <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p>{invoice.term}</p>
-                              <p className="text-xs text-muted-foreground">{invoice.academicYear}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(invoice.totalAmount)}
-                          </TableCell>
-                          <TableCell className="text-right text-green-600">
-                            {formatCurrency(invoice.amountPaid)}
-                          </TableCell>
-                          <TableCell className="text-right text-red-600">
-                            {formatCurrency(invoice.balance)}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                          <TableCell>{formatDate(invoice.dueDate)}</TableCell>
-                          <TableCell className="text-right">
-                            {invoice.status !== "PAID" && (
-                              <Button
-                                size="sm"
-                                onClick={() => handlePayNow(invoice)}
-                              >
-                                Pay Now
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <BillingDataTable
+                  columns={parentInvoiceColumns}
+                  data={mappedInvoices}
+                />
               )}
             </CardContent>
           </Card>
@@ -350,13 +300,6 @@ function BillingContent() {
           <p className="text-muted-foreground">Failed to load billing information</p>
         </div>
       )}
-
-      <MobileMoneyDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        invoice={selectedInvoice}
-        onSuccess={handlePaymentSuccess}
-      />
     </div>
   );
 }

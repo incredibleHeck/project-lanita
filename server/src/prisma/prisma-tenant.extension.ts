@@ -19,6 +19,11 @@ const TENANT_MODELS = new Set([
   'NotificationLog',
   'MessageThread',
   'Announcement',
+  'Course',
+  'CourseModule',
+  'Lesson',
+  'Assignment',
+  'Submission',
 ]);
 
 function hasSchoolId(model: string): boolean {

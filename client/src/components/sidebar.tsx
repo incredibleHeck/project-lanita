@@ -109,6 +109,11 @@ const studentNavigation = [
     icon: LayoutDashboard,
   },
   {
+    name: "My Courses",
+    href: "/student/courses",
+    icon: BookOpen,
+  },
+  {
     name: "My Grades",
     href: "/student/grades",
     icon: Award,

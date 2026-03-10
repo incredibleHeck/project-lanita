@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { StudentsQueryDto } from './dto/students-query.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ABACGuard } from '../common/guards/abac.guard';
@@ -38,20 +39,8 @@ export class StudentsController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
-  findAll(
-    @Query('classId') classId?: string,
-    @Query('sectionId') sectionId?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.studentsService.findAll({
-      classId,
-      sectionId,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      search,
-    });
+  findAll(@Query() query: StudentsQueryDto) {
+    return this.studentsService.findAll(query);
   }
 
   @Get(':id')

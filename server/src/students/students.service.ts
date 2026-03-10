@@ -2,7 +2,9 @@ import { Injectable, ConflictException, InternalServerErrorException, NotFoundEx
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { StudentsQueryDto } from './dto/students-query.dto';
 import { UserEntity } from '../common/entities/user.entity';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import * as argon2 from 'argon2';
 import { UserRole } from '@prisma/client';
 
@@ -98,49 +100,51 @@ export class StudentsService {
     }
   }
 
-  async findAll(filters: { classId?: string; sectionId?: string; page?: number; limit?: number; search?: string }) {
-    const { page = 1, limit = 10, search } = filters;
+  async findAll(dto: StudentsQueryDto): Promise<PaginatedResult<UserEntity>> {
+    const page = dto.page ?? 1;
+    const limit = dto.limit ?? 10;
     const skip = (page - 1) * limit;
 
     const whereClause: any = {
       role: UserRole.STUDENT,
     };
 
-    if (filters.sectionId) {
+    if (dto.sectionId) {
       whereClause.studentRecord = {
         ...whereClause.studentRecord,
-        currentSectionId: filters.sectionId,
+        currentSectionId: dto.sectionId,
       };
-    } else if (filters.classId) {
+    } else if (dto.classId) {
       whereClause.studentRecord = {
         ...whereClause.studentRecord,
         currentSection: {
-          classId: filters.classId,
+          classId: dto.classId,
         },
       };
     }
 
-    if (search) {
+    if (dto.search) {
       whereClause.OR = [
         {
           profile: {
-            firstName: { contains: search, mode: 'insensitive' },
+            firstName: { contains: dto.search, mode: 'insensitive' },
           },
         },
         {
           profile: {
-            lastName: { contains: search, mode: 'insensitive' },
+            lastName: { contains: dto.search, mode: 'insensitive' },
           },
         },
         {
           studentRecord: {
-            admissionNumber: { contains: search, mode: 'insensitive' },
+            admissionNumber: { contains: dto.search, mode: 'insensitive' },
           },
         },
       ];
     }
 
-    const [data, total] = await Promise.all([
+    const [total, users] = await this.prisma.$transaction([
+      this.prisma.user.count({ where: whereClause }),
       this.prisma.user.findMany({
         where: whereClause,
         skip,
@@ -157,17 +161,15 @@ export class StudentsService {
           createdAt: 'asc',
         },
       }),
-      this.prisma.user.count({ where: whereClause }),
     ]);
 
-    const lastPage = Math.ceil(total / limit);
-
     return {
-      data: data.map((user) => new UserEntity(user)),
+      data: users.map((user) => new UserEntity(user)),
       meta: {
         total,
         page,
-        lastPage,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }

@@ -1,12 +1,19 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
-import { InvoiceStatus, Prisma } from '@prisma/client';
+import { InitializePaystackDto } from './dto/initialize-paystack.dto';
+import { PaystackService } from './paystack.service';
+import { InvoiceStatus, PaymentTransactionStatus, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class BillingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private paystackService: PaystackService,
+  ) {}
 
   private generateInvoiceNumber(): string {
     const now = new Date();
@@ -433,9 +440,107 @@ export class BillingService {
     return studentRecord.userId === studentUserId;
   }
 
+  async initializePaystackPayment(dto: InitializePaystackDto, parentUserId: string) {
+    const invoice = await this.prisma.studentInvoice.findFirst({
+      where: { id: dto.invoiceId },
+      include: {
+        student: { include: { parent: true } },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    const hasAccess = await this.verifyParentAccess(parentUserId, invoice.studentId);
+    if (!hasAccess) {
+      throw new ForbiddenException('You can only pay for your children\'s invoices');
+    }
+
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new BadRequestException('Invoice is already fully paid');
+    }
+
+    const remaining = invoice.totalAmount.sub(invoice.amountPaid);
+    const remainingNum = remaining.toNumber();
+    if (remainingNum <= 0) {
+      throw new BadRequestException('No remaining balance to pay');
+    }
+
+    const parent = invoice.student.parent;
+    if (!parent?.email) {
+      throw new BadRequestException('Parent email is required for online payment');
+    }
+
+    const reference = randomUUID();
+    const tenantId = invoice.schoolId ?? getTenantSchoolId();
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required');
+    }
+
+    await this.prisma.paymentTransaction.create({
+      data: {
+        reference,
+        amount: remainingNum,
+        status: 'PENDING',
+        channel: 'paystack',
+        invoiceId: dto.invoiceId,
+        paidById: parentUserId,
+        tenantId,
+      },
+    });
+
+    const amountInPesewas = Math.round(remainingNum * 100);
+    const result = await this.paystackService.initializeTransaction(
+      amountInPesewas,
+      parent.email,
+      reference,
+      dto.callbackUrl,
+    );
+
+    return {
+      authorization_url: result.authorization_url,
+      reference,
+    };
+  }
+
   async getStudentRecordByUserId(userId: string) {
     return this.prisma.studentRecord.findUnique({
       where: { userId },
+    });
+  }
+
+  async processChargeSuccess(reference: string, channel: string): Promise<void> {
+    const transaction = await this.prisma.paymentTransaction.findUnique({
+      where: { reference },
+      include: { invoice: true },
+    });
+
+    if (!transaction) {
+      return;
+    }
+
+    if (transaction.status === PaymentTransactionStatus.SUCCESS) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.paymentTransaction.update({
+        where: { id: transaction.id },
+        data: { status: PaymentTransactionStatus.SUCCESS, channel },
+      });
+
+      const invoice = transaction.invoice;
+      const newAmountPaid = invoice.amountPaid.add(transaction.amount);
+      const newStatus =
+        newAmountPaid.greaterThanOrEqualTo(invoice.totalAmount)
+          ? InvoiceStatus.PAID
+          : InvoiceStatus.PARTIAL;
+
+      await tx.studentInvoice.update({
+        where: { id: invoice.id },
+        data: { amountPaid: newAmountPaid, status: newStatus },
+      });
     });
   }
 }
