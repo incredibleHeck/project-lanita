@@ -2,20 +2,22 @@
 
 import { useDraggable } from '@dnd-kit/core';
 
+interface SlotData {
+  id?: string;
+  section_id?: string;
+  sectionId?: string;
+  subject_id?: string;
+  subjectId?: string;
+  teacher_id?: string;
+  teacherId?: string;
+  [key: string]: unknown;
+}
+
 interface DraggableSlotProps {
   id: string;
-  slot: {
-    id?: string;
-    section_id?: string;
-    sectionId?: string;
-    subject_id?: string;
-    subjectId?: string;
-    teacher_id?: string;
-    teacherId?: string;
-    [key: string]: unknown;
-  };
-  getPrimaryLabel: (slot: any) => string;
-  getSecondaryLabel: (slot: any) => string;
+  slot: SlotData;
+  getPrimaryLabel: (slot: SlotData) => string;
+  getSecondaryLabel: (slot: SlotData) => string;
   color?: string;
   disabled?: boolean;
 }

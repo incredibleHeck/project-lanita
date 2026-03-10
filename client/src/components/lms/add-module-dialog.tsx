@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { typedZodResolver } from "@/lib/zod-resolver";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ export function AddModuleDialog({
   const queryClient = useQueryClient();
 
   const form = useForm<ModuleFormData>({
-    resolver: zodResolver(moduleSchema),
+    resolver: typedZodResolver(moduleSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -144,9 +144,9 @@ export function AddModuleDialog({
                       min={0}
                       placeholder="0"
                       {...field}
-                      value={field.value ?? ""}
+                      value={typeof field.value === "number" ? field.value : ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value === "" ? undefined : e.target.value)
+                        field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
                       }
                     />
                   </FormControl>

@@ -1,7 +1,5 @@
 import api from '@/lib/axios';
-import { offlineDB, type PendingAttendance, type SyncStatus } from '@/lib/offline-db';
-
-const MAX_RETRY_ATTEMPTS = 3;
+import { offlineDB, type SyncStatus } from '@/lib/offline-db';
 const SYNC_BATCH_SIZE = 10;
 
 interface SyncResult {
@@ -89,11 +87,6 @@ export async function syncAllPendingData(): Promise<void> {
 }
 
 export async function retryFailedSyncs(): Promise<SyncResult> {
-  const failed = await offlineDB.attendanceQueue
-    .where('syncStatus')
-    .equals('failed')
-    .toArray();
-
   await offlineDB.attendanceQueue
     .where('syncStatus')
     .equals('failed')

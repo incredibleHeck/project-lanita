@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { WifiOff, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOnlineStatus } from '@/hooks/use-offline-attendance';
 import { syncPendingAttendance, getLastSyncInfo } from '@/lib/sync-engine';

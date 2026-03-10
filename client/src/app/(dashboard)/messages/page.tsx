@@ -7,15 +7,12 @@ import {
   Send,
   User,
   Loader2,
-  Plus,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { RoleGuard } from '@/components/role-guard';
 import api from '@/lib/axios';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';

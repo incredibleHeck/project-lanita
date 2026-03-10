@@ -11,7 +11,6 @@ import { Loader2, Plus, Check } from "lucide-react";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -142,7 +141,7 @@ export function AddSubjectSheet({
         isExaminable: subject.isExaminable ?? true,
         isSingleResource: subject.isSingleResource ?? false,
         requiredRoomId: subject.requiredRoomId ?? null,
-        requiredRoomType: subject.requiredRoomType && ROOM_TYPES.includes(subject.requiredRoomType as any)
+        requiredRoomType: subject.requiredRoomType && (ROOM_TYPES as readonly string[]).includes(subject.requiredRoomType)
           ? (subject.requiredRoomType as (typeof ROOM_TYPES)[number])
           : null,
       });
@@ -243,6 +242,7 @@ export function AddSubjectSheet({
   }
 
   const isPending = createSubject.isPending || updateSubject.isPending;
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch()
   const colorValue = form.watch("color");
 
   const sheetContent = (

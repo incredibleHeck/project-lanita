@@ -260,15 +260,13 @@ function CreateAnnouncementDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {scope === 'CLASS' ? (
-                    [...new Map(sections.map((s: any) => [s.class?.id, s.class])).values()]
-                      .filter(Boolean)
-                      .map((c: any) => (
+                    ([...new Map(sections.map((s: { class?: { id: string; name: string } }) => [s.class?.id, s.class])).values()].filter(Boolean) as { id: string; name: string }[]).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
                         </SelectItem>
                       ))
                   ) : (
-                    sections.map((s: any) => (
+                    sections.map((s: { id: string; name: string; class?: { name: string } }) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.class?.name} - {s.name}
                       </SelectItem>

@@ -50,7 +50,7 @@ export function PaystackPaymentButton({
         { invoiceId, callbackUrl: url }
       );
 
-      const { authorization_url, reference } = data;
+      const { authorization_url } = data;
 
       if (authorization_url) {
         window.open(authorization_url, "paystack", "width=500,height=700,scrollbars=yes");

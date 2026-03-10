@@ -29,7 +29,7 @@ export function RoleGuard({ children, allowedRoles, redirectTo = "/dashboard" }:
         return;
       }
 
-      setIsAuthorized(true);
+      queueMicrotask(() => setIsAuthorized(true));
     }
   }, [user, isLoading, allowedRoles, router, redirectTo]);
 

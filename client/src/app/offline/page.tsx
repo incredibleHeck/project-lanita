@@ -9,7 +9,7 @@ export default function OfflinePage() {
   const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
-    setIsOnline(navigator.onLine);
+    queueMicrotask(() => setIsOnline(navigator.onLine));
 
     const handleOnline = () => {
       setIsOnline(true);

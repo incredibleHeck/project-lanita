@@ -2,6 +2,8 @@ import {
   Injectable,
   NestMiddleware,
   UnauthorizedException,
+  Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,40 +12,55 @@ import { tenantStorage } from './tenant.context';
 
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(TenantMiddleware.name);
+
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const tenantCode = this.extractTenantCode(req);
+    try {
+      const tenantCode = this.extractTenantCode(req);
 
-    if (!tenantCode) {
-      const defaultSchoolId = this.config.get<string>('DEFAULT_SCHOOL_ID');
-      if (defaultSchoolId) {
-        const school = await this.prisma.school.findUnique({
-          where: { id: defaultSchoolId },
-        });
-        if (school && school.isActive) {
-          req['schoolId'] = school.id;
-          req['school'] = school;
-          return tenantStorage.run({ schoolId: school.id }, () => next());
+      if (!tenantCode) {
+        const defaultSchoolId = this.config.get<string>('DEFAULT_SCHOOL_ID');
+        if (defaultSchoolId) {
+          const school = await this.prisma.school.findUnique({
+            where: { id: defaultSchoolId },
+          });
+          if (school && school.isActive) {
+            req['schoolId'] = school.id;
+            req['school'] = school;
+            return tenantStorage.run({ schoolId: school.id }, () => next());
+          }
         }
+        throw new UnauthorizedException('Tenant not specified');
       }
-      throw new UnauthorizedException('Tenant not specified');
+
+      const school = await this.prisma.school.findUnique({
+        where: { code: tenantCode },
+      });
+
+      if (!school || !school.isActive) {
+        throw new UnauthorizedException('Invalid or inactive tenant');
+      }
+
+      req['schoolId'] = school.id;
+      req['school'] = school;
+      return tenantStorage.run({ schoolId: school.id }, () => next());
+    } catch (err) {
+      if (
+        err instanceof UnauthorizedException ||
+        err instanceof ServiceUnavailableException
+      ) {
+        throw err;
+      }
+      this.logger.error('Tenant middleware error', err);
+      throw new ServiceUnavailableException(
+        'Unable to resolve tenant. Please try again later.',
+      );
     }
-
-    const school = await this.prisma.school.findUnique({
-      where: { code: tenantCode },
-    });
-
-    if (!school || !school.isActive) {
-      throw new UnauthorizedException('Invalid or inactive tenant');
-    }
-
-    req['schoolId'] = school.id;
-    req['school'] = school;
-    return tenantStorage.run({ schoolId: school.id }, () => next());
   }
 
   private extractTenantCode(req: Request): string | null {

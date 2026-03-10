@@ -79,7 +79,7 @@ export function PassportPhotoUpload({
 
   function handleRemove() {
     onChange(null);
-    inputRef.current?.value && (inputRef.current.value = "");
+    if (inputRef.current?.value) inputRef.current.value = "";
   }
 
   return (

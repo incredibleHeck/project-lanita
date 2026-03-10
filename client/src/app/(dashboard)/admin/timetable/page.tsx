@@ -10,7 +10,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Calendar,
   RefreshCcw,
@@ -52,7 +52,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import api from '@/lib/axios';
-import { exportTimetableToExcel } from '@/lib/timetable-export';
+import { exportTimetableToExcel, type ExportSlot } from '@/lib/timetable-export';
 import { TimetablePrintView } from '@/components/timetable/timetable-print-view';
 import { DroppableCell } from '@/components/timetable/droppable-cell';
 import { DraggableSlot } from '@/components/timetable/draggable-slot';
@@ -106,7 +106,6 @@ interface Subject {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const DAY_ABBREVIATIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
 const PERIODS = [
   { number: 1, start: '08:00', end: '08:45' },
@@ -119,14 +118,47 @@ const PERIODS = [
   { number: 8, start: '14:40', end: '15:25' },
 ];
 
+interface DisplaySlot extends TimetableSlot {
+  id?: string;
+  dayOfWeek?: number;
+  periodNumber?: number;
+  sectionId?: string;
+  subjectId?: string;
+  teacherId?: string;
+  roomId?: string | null;
+  section?: { class: { name: string }; name: string };
+  room?: { name: string };
+  subject?: { name: string; color?: string };
+  [key: string]: unknown;
+}
+
+interface TeacherWithProfile {
+  id: string;
+  email?: string;
+  profile?: { firstName?: string; lastName?: string };
+}
+
+/** Minimal slot shape for label getters (shared with DraggableSlot/TimetablePrintView). */
+interface SlotLabelArg {
+  subject_id?: string;
+  subjectId?: string;
+  subject?: { name: string; color?: string };
+  section_id?: string;
+  sectionId?: string;
+  section?: { class: { name: string }; name: string };
+  room_id?: string | null;
+  roomId?: string | null;
+  room?: { name: string };
+  [key: string]: unknown;
+}
+
 export default function TimetablePage() {
-  const queryClient = useQueryClient();
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('');
   const [viewMode, setViewMode] = useState<'SECTION' | 'TEACHER'>('SECTION');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
   const [isEditMode, setIsEditMode] = useState(false);
-  const [activeDragSlot, setActiveDragSlot] = useState<any>(null);
+  const [activeDragSlot, setActiveDragSlot] = useState<DisplaySlot | null>(null);
   const [generatedSlots, setGeneratedSlots] = useState<TimetableSlot[]>([]);
   const [generateStatus, setGenerateStatus] = useState<string>('');
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
@@ -202,11 +234,12 @@ export default function TimetablePage() {
       setGenerateStatus(data.status);
       toast.success(data.message || `Generated ${data.slots?.length ?? 0} slots`);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       setGenerateStatus('ERROR');
+      const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
       const raw =
-        error?.response?.data?.message ??
-        error?.message ??
+        err?.response?.data?.message ??
+        err?.message ??
         'Failed to generate timetable';
       const msg = Array.isArray(raw) ? raw.join(', ') : String(raw);
       toast.error(msg);
@@ -254,8 +287,9 @@ export default function TimetablePage() {
       refetchSavedSlots();
       toast.success('Slot moved successfully');
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? 'Failed to move slot');
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message ?? 'Failed to move slot');
     },
   });
 
@@ -268,7 +302,7 @@ export default function TimetablePage() {
     const { active, over } = event;
     if (!over || !active.data.current?.slot) return;
 
-    const slot = active.data.current.slot as any;
+    const slot = active.data.current.slot as DisplaySlot;
     const slotId = slot.id;
     if (!slotId) return;
 
@@ -299,18 +333,18 @@ export default function TimetablePage() {
       ? selectedSection === 'all'
         ? displaySlots
         : displaySlots.filter(
-            (slot: any) =>
+            (slot: DisplaySlot) =>
               slot.section_id === selectedSection || slot.sectionId === selectedSection
           )
       : selectedTeacher === 'all'
         ? displaySlots
         : displaySlots.filter(
-            (slot: any) =>
+            (slot: DisplaySlot) =>
               slot.teacher_id === selectedTeacher || slot.teacherId === selectedTeacher
           );
 
   const getSlotForCell = (day: number, period: number, entityId: string) => {
-    return filteredSlots.find((slot: any) => {
+    return filteredSlots.find((slot: DisplaySlot) => {
       const slotDay = slot.day_of_week ?? slot.dayOfWeek;
       const slotPeriod = slot.period_number ?? slot.periodNumber;
       if (viewMode === 'SECTION') {
@@ -322,49 +356,49 @@ export default function TimetablePage() {
     });
   };
 
-  const getSubjectName = (slot: any) => {
-    const subjectId = slot.subject_id ?? slot.subjectId;
+  const getSubjectName = (slot: SlotLabelArg) => {
+    const subjectId = slot.subject_id ?? slot.subjectId ?? '';
     const subject = subjectMap.get(subjectId);
     return subject?.name || slot.subject?.name || 'Unknown';
   };
 
-  const getSubjectColor = (slot: any) => {
-    const subjectId = slot.subject_id ?? slot.subjectId;
+  const getSubjectColor = (slot: SlotLabelArg) => {
+    const subjectId = slot.subject_id ?? slot.subjectId ?? '';
     const subject = subjectMap.get(subjectId);
     return subject?.color || '#6366f1';
   };
 
-  const getRoomName = (slot: any) => {
+  const getRoomName = (slot: SlotLabelArg) => {
     const roomId = slot.room_id ?? slot.roomId;
     if (!roomId) return 'TBD';
     const room = roomMap.get(roomId);
     return room?.name || slot.room?.name || 'TBD';
   };
 
-  const getSectionDisplayName = (slot: any) => {
+  const getSectionDisplayName = (slot: SlotLabelArg) => {
     if (slot.section?.class && slot.section?.name) {
       return `${slot.section.class.name} - ${slot.section.name}`;
     }
-    const sid = slot.section_id ?? slot.sectionId;
+    const sid = slot.section_id ?? slot.sectionId ?? '';
     const sec = sectionMap.get(sid);
     return sec ? `${sec.class.name} - ${sec.name}` : 'Unknown';
   };
 
   const selectedSectionObj = sectionMap.get(selectedSection);
-  const selectedTeacherObj = teachers.find((t: any) => t.id === selectedTeacher);
+  const selectedTeacherObj = teachers.find((t: TeacherWithProfile) => t.id === selectedTeacher);
 
   const selectedYearName = academicYears?.find((y) => y.id === selectedAcademicYear)?.name ?? '';
 
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
-    contentRef: printRef,
+    content: () => printRef.current,
     documentTitle: `Timetable_${selectedSectionObj ? `${selectedSectionObj.class.name}-${selectedSectionObj.name}` : 'All'}`,
   });
 
   const handleExportExcel = async () => {
     try {
       await exportTimetableToExcel(
-        displaySlots as any[],
+        displaySlots as ExportSlot[],
         viewMode,
         sections ?? [],
         subjects ?? [],
@@ -381,7 +415,7 @@ export default function TimetablePage() {
   };
 
   const hasSavedSlots = generatedSlots.length === 0 && (savedSlots?.length ?? 0) > 0;
-  const slotsHaveIds = filteredSlots.some((s: any) => s.id);
+  const slotsHaveIds = filteredSlots.some((s: DisplaySlot) => s.id);
   const canEdit = hasSavedSlots && slotsHaveIds;
 
   const currentEntityId = viewMode === 'SECTION' ? selectedSection : selectedTeacher;
@@ -684,7 +718,7 @@ export default function TimetablePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Teachers</SelectItem>
-                    {teachers.map((teacher: any) => (
+                    {teachers.map((teacher: TeacherWithProfile) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
                         {[teacher.profile?.firstName, teacher.profile?.lastName]
                           .filter(Boolean)

@@ -177,7 +177,7 @@ export function usePrefetchAttendance() {
         error: errorMessage,
       }));
     }
-  }, [user?.id, user?.role]);
+  }, [user]);
 
   useEffect(() => {
     if (user?.role === 'TEACHER' && navigator.onLine) {

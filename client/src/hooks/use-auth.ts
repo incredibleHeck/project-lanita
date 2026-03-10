@@ -32,24 +32,24 @@ export function useAuth(): AuthState {
     if (storedUser && accessToken) {
       try {
         const user = JSON.parse(storedUser) as User;
-        setState({
+        queueMicrotask(() => setState({
           user,
           isAuthenticated: true,
           isLoading: false,
-        });
+        }));
       } catch {
-        setState({
+        queueMicrotask(() => setState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
-        });
+        }));
       }
     } else {
-      setState({
+      queueMicrotask(() => setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-      });
+      }));
     }
   }, []);
 

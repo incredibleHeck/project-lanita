@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "@/lib/axios";
 import { useAuth } from "@/hooks/use-auth";
 import { RoleGuard } from "@/components/role-guard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -22,7 +23,9 @@ import {
   CheckCircle2,
   Clock,
   Users,
+  CreditCard,
 } from "lucide-react";
+import { PayFeesDialog } from "@/components/billing/pay-fees-dialog";
 import { formatCurrency } from "@/lib/format";
 import { BillingDataTable } from "@/components/billing/billing-data-table";
 import {
@@ -89,6 +92,7 @@ function BillingContent() {
   const preselectedChildId = searchParams.get("childId");
 
   const [selectedChildId, setSelectedChildId] = useState<string | null>(preselectedChildId);
+  const [payFeesDialogOpen, setPayFeesDialogOpen] = useState(false);
 
   const { data: childrenData, isLoading: childrenLoading } = useQuery({
     queryKey: ["parent", "children", user?.id],
@@ -99,16 +103,26 @@ function BillingContent() {
     enabled: !!user?.id,
   });
 
-  const children = childrenData?.data || [];
+  const children = useMemo(
+    () => childrenData?.data || [],
+    [childrenData?.data]
+  );
+
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (children.length > 0 && !selectedChildId) {
       const childToSelect = preselectedChildId || children[0].id;
-      setSelectedChildId(childToSelect);
+      queueMicrotask(() => setSelectedChildId(childToSelect));
     }
   }, [children, selectedChildId, preselectedChildId]);
 
-  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (searchParams.get("payment") === "callback") {
+      queryClient.invalidateQueries({ queryKey: ["billing", "statement", selectedChildId] });
+      window.history.replaceState({}, "", "/parent/billing");
+    }
+  }, [searchParams, queryClient, selectedChildId]);
   const { data: statement, isLoading: statementLoading } = useQuery({
     queryKey: ["billing", "statement", selectedChildId],
     queryFn: async () => {
@@ -179,26 +193,37 @@ function BillingContent() {
           <h1 className="text-3xl font-bold tracking-tight">Fees & Payments</h1>
         </div>
 
-        {children.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Select Child:</span>
-            <Select
-              value={selectedChildId || ""}
-              onValueChange={(value) => setSelectedChildId(value)}
+        <div className="flex items-center gap-2">
+          {statement && statement.summary.balance > 0 && (
+            <Button
+              onClick={() => setPayFeesDialogOpen(true)}
+              className="gap-2"
             >
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Select a child" />
-              </SelectTrigger>
-              <SelectContent>
-                {children.map((child) => (
-                  <SelectItem key={child.id} value={child.id}>
-                    {child.user.profile?.firstName} {child.user.profile?.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+              <CreditCard className="h-4 w-4" />
+              Pay Fees
+            </Button>
+          )}
+          {children.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Select Child:</span>
+              <Select
+                value={selectedChildId || ""}
+                onValueChange={(value) => setSelectedChildId(value)}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Select a child" />
+                </SelectTrigger>
+                <SelectContent>
+                  {children.map((child) => (
+                    <SelectItem key={child.id} value={child.id}>
+                      {child.user.profile?.firstName} {child.user.profile?.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       {selectedChild && (
@@ -270,9 +295,31 @@ function BillingContent() {
                   {formatCurrency(statement.summary.balance)}
                 </div>
                 <p className="text-xs text-muted-foreground">Amount remaining</p>
+                {statement.summary.balance > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full"
+                    onClick={() => setPayFeesDialogOpen(true)}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Pay Fees Now
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
+
+          <PayFeesDialog
+            open={payFeesDialogOpen}
+            onOpenChange={setPayFeesDialogOpen}
+            invoices={mappedInvoices}
+            onPaySuccess={() =>
+              queryClient.invalidateQueries({
+                queryKey: ["billing", "statement", selectedChildId],
+              })
+            }
+          />
 
           <Card>
             <CardHeader>

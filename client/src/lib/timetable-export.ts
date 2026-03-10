@@ -163,14 +163,6 @@ function generateSheet(
     return sec ? `${sec.class.name} - ${sec.name}` : "Unknown";
   };
 
-  const getRoomName = (slot: ExportSlot) => {
-    if (slot.room?.name) return slot.room.name;
-    const id = slot.room_id ?? slot.roomId;
-    if (!id) return "TBD";
-    const r = rooms.find((x) => x.id === id);
-    return r?.name ?? "TBD";
-  };
-
   for (let d = 0; d < 5; d++) {
     const row = worksheet.getRow(d + 3);
     row.height = 65;

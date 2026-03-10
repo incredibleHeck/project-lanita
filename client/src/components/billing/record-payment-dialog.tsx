@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { typedZodResolver } from "@/lib/zod-resolver";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -58,7 +57,7 @@ export function RecordPaymentDialog({
   const remainingBalance = invoice?.balance ?? 0;
 
   const form = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentSchema),
+    resolver: typedZodResolver(paymentSchema),
     defaultValues: {
       amount: remainingBalance,
       method: "CASH",
@@ -164,6 +163,7 @@ export function RecordPaymentDialog({
                       max={remainingBalance}
                       placeholder="Enter amount"
                       {...field}
+                      value={typeof field.value === "number" ? field.value : ""}
                     />
                   </FormControl>
                   <FormMessage />

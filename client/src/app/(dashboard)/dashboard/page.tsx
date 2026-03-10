@@ -41,7 +41,7 @@ export default function DashboardPage() {
           router.push("/student/dashboard");
           return;
         case "TEACHER":
-          router.push("/teacher/classes");
+          router.push("/teacher/dashboard");
           return;
         case "PARENT":
           router.push("/parent/dashboard");

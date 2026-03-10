@@ -18,7 +18,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Sidebar, getNavigation } from "@/components/sidebar";
+import { getNavigation } from "@/components/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ export function Header({ className }: HeaderProps) {
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      queueMicrotask(() => setUser(JSON.parse(storedUser) as UserInfo));
     }
   }, []);
 

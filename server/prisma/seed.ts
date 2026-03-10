@@ -244,6 +244,7 @@ async function main() {
       allocationMath10A = alloc;
     }
   }
+  if (!allocationMath10A) throw new Error('Seed: Math 10-A allocation not found');
   console.log(`Allocations created: ${allocationData.length} (all sections × 5 subjects)`);
 
   // Step 9: Create Parents

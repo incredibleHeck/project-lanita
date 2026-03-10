@@ -140,6 +140,7 @@ export function MobileMoneyDialog({
 
   if (!invoice) return null;
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form watch()
   const selectedProvider = PROVIDERS.find((p) => p.id === form.watch("provider"));
 
   return (

@@ -11,7 +11,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     defaultOptions: {
       queries: {
         staleTime: 1000 * 60 * 5,
-        retry: (failureCount, error) => {
+        retry: (failureCount) => {
           if (!navigator.onLine) return false;
           return failureCount < 3;
         },

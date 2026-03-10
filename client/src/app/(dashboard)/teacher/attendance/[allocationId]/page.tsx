@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useMemo, use } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "@/lib/axios";
 import { useRouter } from "next/navigation";
@@ -116,7 +116,10 @@ export default function AttendancePage({ params }: { params: Promise<{ allocatio
     enabled: !!sectionId,
   });
 
-  const students = studentsData?.data || [];
+  const students = useMemo(
+    () => studentsData?.data || [],
+    [studentsData?.data]
+  );
 
   useEffect(() => {
     if (students.length > 0 && attendanceRecords.length === 0) {
@@ -124,7 +127,7 @@ export default function AttendancePage({ params }: { params: Promise<{ allocatio
         studentId: student.studentRecord?.id || student.id,
         status: "PRESENT" as AttendanceStatus,
       }));
-      setAttendanceRecords(initialRecords);
+      queueMicrotask(() => setAttendanceRecords(initialRecords));
     }
   }, [students, attendanceRecords.length]);
 
@@ -155,8 +158,9 @@ export default function AttendancePage({ params }: { params: Promise<{ allocatio
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       router.push("/teacher/classes");
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || "Failed to save attendance";
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err?.response?.data?.message || "Failed to save attendance";
       toast.error(message);
     },
   });

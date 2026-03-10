@@ -82,13 +82,18 @@ const adminNavigation = [
 const teacherNavigation = [
   {
     name: "Dashboard",
-    href: "/dashboard",
+    href: "/teacher/dashboard",
     icon: LayoutDashboard,
   },
   {
     name: "My Classes",
     href: "/teacher/classes",
     icon: BookOpen,
+  },
+  {
+    name: "My Courses",
+    href: "/teacher/courses",
+    icon: GraduationCap,
   },
   {
     name: "Messages",

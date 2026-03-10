@@ -15,14 +15,13 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated
     const token = localStorage.getItem("accessToken");
     if (!token) {
       router.push("/login");
     } else {
-      setIsAuthenticated(true);
+      queueMicrotask(() => setIsAuthenticated(true));
     }
-    setIsLoading(false);
+    queueMicrotask(() => setIsLoading(false));
   }, [router]);
 
   if (isLoading) {

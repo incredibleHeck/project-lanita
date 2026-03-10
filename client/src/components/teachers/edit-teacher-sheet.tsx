@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -96,12 +96,12 @@ export function EditTeacherSheet({
   useEffect(() => {
     if (teacher && open) {
       const dob = teacher.profile?.dob;
-      const dobStr =
-        typeof dob === "string"
-          ? dob.split("T")[0]
-          : dob instanceof Date
-            ? dob.toISOString().split("T")[0]
-            : "";
+      let dobStr = "";
+      if (typeof dob === "string") {
+        dobStr = dob.split("T")[0];
+      } else if (dob && typeof dob === "object" && "toISOString" in dob) {
+        dobStr = (dob as Date).toISOString().split("T")[0];
+      }
       const addr = teacher.profile?.address;
       const city =
         typeof addr === "object" && addr !== null && "city" in addr

@@ -35,8 +35,9 @@ export function DataTable<TData, TValue>({
   onPageChange,
   isLoading = false,
 }: DataTableProps<TData, TValue>) {
-  const hasPagination = pageCount > 1 && onPageChange;
+  const hasPagination = pageCount > 1 && !!onPageChange;
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table API
   const table = useReactTable({
     data,
     columns,
@@ -51,13 +52,12 @@ export function DataTable<TData, TValue>({
           },
         }
       : undefined,
-    onPaginationChange: hasPagination
+    onPaginationChange: hasPagination && onPageChange
       ? (updater) => {
-          const next = updater({
-            pagination: { pageIndex: page - 1, pageSize: 10 },
-          });
-          if (next.pagination.pageIndex !== page - 1) {
-            onPageChange(next.pagination.pageIndex + 1);
+          const prevState = { pageIndex: page - 1, pageSize: 10 };
+          const next = typeof updater === "function" ? updater(prevState) : updater;
+          if (next.pageIndex !== page - 1) {
+            onPageChange(next.pageIndex + 1);
           }
         }
       : undefined,

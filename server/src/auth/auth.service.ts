@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
@@ -9,6 +13,8 @@ import { UserRole, Gender } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -26,13 +32,17 @@ export class AuthService {
       role,
     };
 
+    const accessSecret =
+      this.config.get<string>('JWT_ACCESS_SECRET') || 'fallback-secret';
+    const refreshSecret =
+      this.config.get<string>('JWT_REFRESH_SECRET') || 'fallback-refresh-secret';
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+        secret: accessSecret,
         expiresIn: '15m',
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET'),
+        secret: refreshSecret,
         expiresIn: '7d',
       }),
     ]);
@@ -103,26 +113,35 @@ export class AuthService {
   }
 
   async signin(dto: AuthDto) {
-    const schoolId = getTenantSchoolId();
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email: dto.email,
-        ...(schoolId && { schoolId }),
-      },
-    });
+    try {
+      const schoolId = getTenantSchoolId();
+      const user = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email,
+          ...(schoolId && { schoolId }),
+        },
+      });
 
-    if (!user) {
+      if (!user) {
+        throw new ForbiddenException('Access Denied');
+      }
+
+      const passwordMatches = await argon2.verify(
+        user.passwordHash,
+        dto.password,
+      );
+      if (!passwordMatches) {
+        throw new ForbiddenException('Access Denied');
+      }
+
+      const tokens = await this.getTokens(user.id, user.email, user.role);
+      await this.updateRefreshToken(user.id, tokens.refreshToken);
+      return tokens;
+    } catch (err) {
+      if (err instanceof ForbiddenException) throw err;
+      this.logger.error('Signin unexpected error', err);
       throw new ForbiddenException('Access Denied');
     }
-
-    const passwordMatches = await argon2.verify(user.passwordHash, dto.password);
-    if (!passwordMatches) {
-      throw new ForbiddenException('Access Denied');
-    }
-
-    const tokens = await this.getTokens(user.id, user.email, user.role);
-    await this.updateRefreshToken(user.id, tokens.refreshToken);
-    return tokens;
   }
 
   async refreshTokens(userId: string, refreshToken: string) {

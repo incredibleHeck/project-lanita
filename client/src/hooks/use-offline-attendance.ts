@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { 
   offlineDB, 
   type AttendanceStatus, 
-  type PendingAttendance,
   type CachedStudent,
   type CachedAttendance,
 } from '@/lib/offline-db';
@@ -74,6 +73,7 @@ export function useOfflineAttendance({
     if (isOnline && pendingCount > 0) {
       syncNow();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- syncNow stable; pendingCount intentionally excluded to avoid sync loops
   }, [isOnline]);
 
   const onlineMutation = useMutation({
@@ -115,6 +115,7 @@ export function useOfflineAttendance({
     } else {
       await saveOffline(records);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- saveOffline defined below, stable for this callback
   }, [isOnline, allocationId, date, onlineMutation]);
 
   const saveOffline = async (records: AttendanceRecord[]) => {

@@ -71,7 +71,12 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: unknown) {
       console.error("Login error:", error);
-      const err = error as { code?: string; message?: string; response?: unknown };
+      const err = error as {
+        code?: string;
+        message?: string;
+        response?: { status?: number };
+      };
+      const status = err?.response?.status;
       const isNetworkError =
         err?.code === "ERR_NETWORK" ||
         err?.message === "Network Error" ||
@@ -80,6 +85,8 @@ export default function LoginPage() {
         toast.error(
           "Connection failed. Please check your internet and ensure the server is running."
         );
+      } else if (status && status >= 500) {
+        toast.error("Something went wrong. Please try again later.");
       } else {
         toast.error("Invalid credentials. Please try again.");
       }

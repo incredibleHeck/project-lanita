@@ -49,6 +49,7 @@ export class PaystackService {
       amount,
       reference,
       callback_url: callbackUrl,
+      channels: ['card', 'bank', 'mobile_money', 'bank_transfer', 'ussd'],
     };
 
     try {

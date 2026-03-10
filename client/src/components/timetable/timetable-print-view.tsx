@@ -50,6 +50,7 @@ interface TimetablePrintViewProps {
 export const TimetablePrintView = forwardRef<HTMLDivElement, TimetablePrintViewProps>(
   (
     {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- slots required by interface; print view uses getSlotForCell
       slots,
       viewMode,
       entityId,
