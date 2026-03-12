@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, CreditCard } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { PaystackPaymentButton } from "@/components/billing/paystack-button";
+import { InvoicePaystackButton } from "@/components/billing/paystack-button";
 
 export type Invoice = {
   id: string;
@@ -119,7 +119,7 @@ export const createInvoiceColumns = (
 
       if (isParentView && onPaystackSuccess) {
         return canPay ? (
-          <PaystackPaymentButton
+          <InvoicePaystackButton
             invoiceId={invoice.id}
             size="sm"
             onSuccess={onPaystackSuccess}

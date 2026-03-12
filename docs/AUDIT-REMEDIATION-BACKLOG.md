@@ -47,8 +47,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - Remove the fallback; require `JWT_ACCESS_SECRET` at startup.
   - Throw (or fail bootstrap) if the value is missing instead of defaulting.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/critical-1_jwt_fallback_secret_baf16a4d.plan.md](.cursor/plans/critical-1_jwt_fallback_secret_baf16a4d.plan.md)
 
 ---
 
@@ -60,8 +60,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - Add explicit tenant filter: `where: { schoolId: getTenantSchoolId() }` to the `groupBy` call.
   - Consider avoiding loading all invoices into memory for totals; use aggregated queries or pagination if needed.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/critical-2_billing_groupby_tenant_leak_d2084d56.plan.md](.cursor/plans/critical-2_billing_groupby_tenant_leak_d2084d56.plan.md)
 
 ---
 
@@ -75,8 +75,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - Bulk-load existing attendance by (studentId, allocationId, date); then batch upsert (e.g. single transaction with bulk upserts or createMany/updateMany where applicable).
   - For alerts: load all students (and parents) for the allocation in one or two queries, then send notifications in a loop (or enqueue one job with batch payload) instead of one DB query per record.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/high-1_attendance_batch_n+1_ca332b89.plan.md](.cursor/plans/high-1_attendance_batch_n+1_ca332b89.plan.md)
 
 ---
 
@@ -88,8 +88,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - Include `schoolId` (or tenant id) in the job payload when enqueueing (e.g. in notification.service).
   - In the processor, run the create inside `tenantStorage.run({ schoolId: job.data.schoolId }, () => { ... })` and/or pass `schoolId` explicitly in the create call so logs are tenant-scoped.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/high-2_notification_processor_schoolid_e3bfc30e.plan.md](.cursor/plans/high-2_notification_processor_schoolid_e3bfc30e.plan.md)
 
 ---
 
@@ -101,8 +101,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - For production: add "change password on first login" or one-time token/link; do not rely on these defaults in prod.
   - Optionally generate a random temporary password and send via secure channel (or force reset on first sign-in).
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/high-3_default_passwords_production_a8c4e2b1.plan.md](.cursor/plans/high-3_default_passwords_production_a8c4e2b1.plan.md)
 
 ---
 
@@ -114,8 +114,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - Ensure the entire update in `processChargeSuccess` is inside a single transaction and that double delivery cannot double-credit (idempotency key or strict "already processed" check).
   - Document retry behavior and ensure no side effects after success.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/high-4_paystack_webhook_idempotency_3b612ae6.plan.md](.cursor/plans/high-4_paystack_webhook_idempotency_3b612ae6.plan.md)
 
 ---
 
@@ -127,8 +127,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Suggested fix:**
   - Add pagination (e.g. take/skip or cursor) and/or cap to "current term" or recent sections.
   - Consider moving heavy ML call to a background job and caching results per tenant/term.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/high-5_analytics_unbounded_load_ca8f4b8d.plan.md](.cursor/plans/high-5_analytics_unbounded_load_ca8f4b8d.plan.md)
 
 ---
 
@@ -141,8 +141,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Broken or low-quality frontend can be deployed without CI catching it.
 - **Suggested fix:**
   - Add a job that runs `npm ci` and `npm run lint` (and ideally `npm run build`) in the `client/` directory.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/medium-1_client_lint_build_ci_5b442c57.plan.md](.cursor/plans/medium-1_client_lint_build_ci_5b442c57.plan.md)
 
 ---
 
@@ -153,8 +153,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Data loss risk with no recovery path.
 - **Suggested fix:**
   - Add a backup strategy (e.g. daily pg_dump to object storage or managed DB backups) and document restore steps.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/medium-2_database_backup_strategy_c272ffa9.plan.md](.cursor/plans/medium-2_database_backup_strategy_c272ffa9.plan.md)
 
 ---
 
@@ -165,8 +165,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Unpredictable or duplicate seed data in production.
 - **Suggested fix:**
   - Remove `db seed` from the server CMD for production; run seed only once (e.g. manual or dedicated init step).
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/medium-3_seed_on_every_start_f932f1db.plan.md](.cursor/plans/medium-3_seed_on_every_start_f932f1db.plan.md)
 
 ---
 
@@ -177,8 +177,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Users may deploy with weak or documented secrets.
 - **Suggested fix:**
   - In SETUP.md, reference "see .env.example" and warn never to use doc snippets in production; avoid embedding real-looking secrets in prose.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/medium-4_setup.md_weak_secrets_47e30cb2.plan.md](.cursor/plans/medium-4_setup.md_weak_secrets_47e30cb2.plan.md)
 
 ---
 
@@ -189,8 +189,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Easier brute-force or token-guessing attacks on auth.
 - **Suggested fix:**
   - Use `@Throttle()` / `@SkipThrottle()` and custom throttler for routes (e.g. auth: 5/min, others: 100/min). Consider separate limits for `/auth/signin`, `/auth/refresh`, and webhook.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md](.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md)
 
 ---
 
@@ -201,8 +201,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Sensitive data in log storage or monitoring.
 - **Suggested fix:**
   - In production, log only a stable error id and stack to your logging system; avoid logging raw message/stack to a channel that might be exposed. Optionally redact known sensitive patterns.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** [.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md](.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md)
 
 ---
 
@@ -313,17 +313,17 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 |----|-------|----------|--------|------|
 | CRITICAL-1 | JWT fallback secret | Critical | [ ] Not started | *Add link or steps* |
 | CRITICAL-2 | Billing groupBy tenant leak | Critical | [ ] Not started | *Add link or steps* |
-| HIGH-1 | Attendance batch N+1 and per-record notifications | High | [ ] Not started | *Add link or steps* |
-| HIGH-2 | Notification processor missing schoolId | High | [ ] Not started | *Add link or steps* |
-| HIGH-3 | Default passwords in production | High | [ ] Not started | *Add link or steps* |
-| HIGH-4 | Paystack webhook idempotency | High | [ ] Not started | *Add link or steps* |
-| HIGH-5 | Analytics unbounded load | High | [ ] Not started | *Add link or steps* |
-| MEDIUM-1 | No client lint/build in CI | Medium | [ ] Not started | *Add link or steps* |
-| MEDIUM-2 | No database backup strategy | Medium | [ ] Not started | *Add link or steps* |
-| MEDIUM-3 | Seed runs on every server start | Medium | [ ] Not started | *Add link or steps* |
-| MEDIUM-4 | SETUP.md suggests weak secrets | Medium | [ ] Not started | *Add link or steps* |
-| MEDIUM-5 | Auth endpoints need stricter rate limits | Medium | [ ] Not started | *Add link or steps* |
-| MEDIUM-6 | Exception filter may log sensitive data | Medium | [ ] Not started | *Add link or steps* |
+| HIGH-1 | Attendance batch N+1 and per-record notifications | High | [x] Done | [plan](.cursor/plans/high-1_attendance_batch_n+1_ca332b89.plan.md) |
+| HIGH-2 | Notification processor missing schoolId | High | [x] Done | [.cursor/plans/high-2_notification_processor_schoolid_e3bfc30e.plan.md](.cursor/plans/high-2_notification_processor_schoolid_e3bfc30e.plan.md) |
+| HIGH-3 | Default passwords in production | High | [x] Done | [plan](.cursor/plans/high-3_default_passwords_production_a8c4e2b1.plan.md) |
+| HIGH-4 | Paystack webhook idempotency | High | [x] Done | [.cursor/plans/high-4_paystack_webhook_idempotency_3b612ae6.plan.md](.cursor/plans/high-4_paystack_webhook_idempotency_3b612ae6.plan.md) |
+| HIGH-5 | Analytics unbounded load | High | [x] Done | [plan](.cursor/plans/high-5_analytics_unbounded_load_ca8f4b8d.plan.md) |
+| MEDIUM-1 | No client lint/build in CI | Medium | [x] Done | [.cursor/plans/medium-1_client_lint_build_ci_5b442c57.plan.md](.cursor/plans/medium-1_client_lint_build_ci_5b442c57.plan.md) |
+| MEDIUM-2 | No database backup strategy | Medium | [x] Done | [plan](.cursor/plans/medium-2_database_backup_strategy_c272ffa9.plan.md) |
+| MEDIUM-3 | Seed runs on every server start | Medium | [x] Done | [.cursor/plans/medium-3_seed_on_every_start_f932f1db.plan.md](.cursor/plans/medium-3_seed_on_every_start_f932f1db.plan.md) |
+| MEDIUM-4 | SETUP.md suggests weak secrets | Medium | [x] Done | [.cursor/plans/medium-4_setup.md_weak_secrets_47e30cb2.plan.md](.cursor/plans/medium-4_setup.md_weak_secrets_47e30cb2.plan.md) |
+| MEDIUM-5 | Auth endpoints need stricter rate limits | Medium | [x] Done | [.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md](.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md) |
+| MEDIUM-6 | Exception filter may log sensitive data | Medium | [x] Done | [.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md](.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md) |
 | LOW-1 | Offline sync UX | Low | [ ] Not started | *Add link or steps* |
 | LOW-2 | Paystack callback / polling | Low | [ ] Not started | *Add link or steps* |
 | LOW-3 | WhatsApp retry and tenant in job | Low | [ ] Not started | *Add link or steps* |

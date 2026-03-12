@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParentDto } from './dto/create-parent.dto';
+import { getInitialPassword } from '../common/utils/password.utils';
 import * as argon2 from 'argon2';
 import { Gender, UserRole } from '@prisma/client';
 
@@ -14,25 +15,29 @@ export class ParentsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createParentDto: CreateParentDto) {
-    const defaultPassword = 'Parent@123';
-    const passwordHash = await argon2.hash(defaultPassword);
+    const { password, mustChange } = getInitialPassword(
+      'PARENT',
+      process.env.NODE_ENV === 'production',
+    );
+    const passwordHash = await argon2.hash(password);
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const user = await this.prisma.$transaction(async (tx) => {
         // 1. Create User (PARENT)
-        const user = await tx.user.create({
+        const newUser = await tx.user.create({
           data: {
             email: createParentDto.email,
             passwordHash,
             role: UserRole.PARENT,
             isActive: true,
+            mustChangePassword: mustChange,
           },
         });
 
         // 2. Create Profile
         await tx.profile.create({
           data: {
-            userId: user.id,
+            userId: newUser.id,
             firstName: createParentDto.firstName,
             lastName: createParentDto.lastName,
             contactNumber: createParentDto.phone,
@@ -58,13 +63,18 @@ export class ParentsService {
           await tx.studentRecord.update({
             where: { id: studentRecord.id },
             data: {
-              parentId: user.id,
+              parentId: newUser.id,
             },
           });
         }
 
-        return user;
+        return newUser;
       });
+
+      if (mustChange && password) {
+        return { ...user, temporaryPassword: password };
+      }
+      return user;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error; // Propagate the specific error to trigger rollback (transaction aborts automatically)

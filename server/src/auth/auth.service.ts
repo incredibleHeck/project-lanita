@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { getTenantSchoolId } from '../common/tenant/tenant.context';
-import { AuthDto, CreateUserDto } from './dto/auth-dto';
+import { AuthDto, ChangePasswordDto, CreateUserDto } from './dto/auth-dto';
 import { UserRole, Gender } from '@prisma/client';
 
 @Injectable()
@@ -134,7 +134,10 @@ export class AuthService {
 
       const tokens = await this.getTokens(user.id, user.email, user.role);
       await this.updateRefreshToken(user.id, tokens.refreshToken);
-      return tokens;
+      return {
+        ...tokens,
+        mustChangePassword: user.mustChangePassword ?? false,
+      };
     } catch (err) {
       if (err instanceof ForbiddenException) throw err;
       this.logger.error('Signin unexpected error', err);
@@ -158,7 +161,10 @@ export class AuthService {
 
     const tokens = await this.getTokens(user.id, user.email, user.role);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
-    return tokens;
+    return {
+      ...tokens,
+      mustChangePassword: user.mustChangePassword ?? false,
+    };
   }
 
   async logout(userId: string) {
@@ -167,5 +173,33 @@ export class AuthService {
       data: { refreshToken: null },
     });
     return { message: 'Logged out successfully' };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('Access Denied');
+    }
+
+    const passwordMatches = await argon2.verify(
+      user.passwordHash,
+      dto.currentPassword,
+    );
+    if (!passwordMatches) {
+      throw new ForbiddenException('Current password is incorrect');
+    }
+
+    const passwordHash = await this.hashData(dto.newPassword);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+      },
+    });
+    return { message: 'Password changed successfully' };
   }
 }

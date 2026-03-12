@@ -379,7 +379,12 @@ export class BillingService {
   }
 
   async getDashboardStats() {
-    const invoices = await this.prisma.studentInvoice.findMany();
+    const schoolId = getTenantSchoolId();
+    const whereClause = schoolId ? { schoolId } : {};
+
+    const invoices = await this.prisma.studentInvoice.findMany({
+      where: whereClause,
+    });
 
     const totalExpected = invoices.reduce(
       (sum, inv) => sum.add(inv.totalAmount),
@@ -392,6 +397,7 @@ export class BillingService {
     const outstanding = totalExpected.sub(totalCollected);
 
     const statusCounts = await this.prisma.studentInvoice.groupBy({
+      where: whereClause,
       by: ['status'],
       _count: { status: true },
     });
@@ -535,6 +541,8 @@ export class BillingService {
     return {
       authorization_url: result.authorization_url,
       reference,
+      amount: remainingNum,
+      email: parent.email,
     };
   }
 
@@ -544,28 +552,27 @@ export class BillingService {
     });
   }
 
+  /**
+   * Process Paystack charge.success webhook. Idempotent: Paystack may retry webhooks;
+   * the reference is the idempotency key. Double delivery cannot double-credit due to
+   * the atomic updateMany gate (only updates when status is PENDING).
+   */
   async processChargeSuccess(
     reference: string,
     channel: string,
   ): Promise<void> {
-    const transaction = await this.prisma.paymentTransaction.findUnique({
-      where: { reference },
-      include: { invoice: true },
-    });
-
-    if (!transaction) {
-      return;
-    }
-
-    if (transaction.status === PaymentTransactionStatus.SUCCESS) {
-      return;
-    }
-
     await this.prisma.$transaction(async (tx) => {
-      await tx.paymentTransaction.update({
-        where: { id: transaction.id },
+      const txResult = await tx.paymentTransaction.updateMany({
+        where: { reference, status: PaymentTransactionStatus.PENDING },
         data: { status: PaymentTransactionStatus.SUCCESS, channel },
       });
+      if (txResult.count === 0) return; // Idempotent: already processed
+
+      const transaction = await tx.paymentTransaction.findUnique({
+        where: { reference },
+        include: { invoice: true },
+      });
+      if (!transaction) return;
 
       const invoice = transaction.invoice;
       const newAmountPaid = invoice.amountPaid.add(transaction.amount);

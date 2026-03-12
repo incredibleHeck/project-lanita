@@ -10,6 +10,7 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentsQueryDto } from './dto/students-query.dto';
 import { UserEntity } from '../common/entities/user.entity';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
+import { getInitialPassword } from '../common/utils/password.utils';
 import * as argon2 from 'argon2';
 import { UserRole } from '@prisma/client';
 
@@ -49,8 +50,11 @@ export class StudentsService {
 
   async create(createStudentDto: CreateStudentDto) {
     const admissionNumber = await this.generateAdmissionNumber();
-    const defaultPassword = 'Student@123';
-    const passwordHash = await argon2.hash(defaultPassword);
+    const { password, mustChange } = getInitialPassword(
+      'STUDENT',
+      process.env.NODE_ENV === 'production',
+    );
+    const passwordHash = await argon2.hash(password);
 
     try {
       const user = await this.prisma.$transaction(async (tx) => {
@@ -61,6 +65,7 @@ export class StudentsService {
             passwordHash,
             role: UserRole.STUDENT,
             isActive: true,
+            mustChangePassword: mustChange,
           },
         });
 
@@ -97,7 +102,11 @@ export class StudentsService {
         return user;
       });
 
-      return this.findOne(user.id);
+      const result = await this.findOne(user.id);
+      if (mustChange && password) {
+        return { ...result, temporaryPassword: password };
+      }
+      return result;
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException('Email already exists');

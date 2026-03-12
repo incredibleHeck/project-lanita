@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserEntity } from '../common/entities/user.entity';
+import { getInitialPassword } from '../common/utils/password.utils';
 import { UserRole } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { getTenantSchoolId } from '../common/tenant/tenant.context';
@@ -97,8 +98,11 @@ export class TeachersService {
       throw new ConflictException('A user with this email already exists');
     }
 
-    const defaultPassword = 'Teacher@123';
-    const passwordHash = await argon2.hash(defaultPassword);
+    const { password, mustChange } = getInitialPassword(
+      'TEACHER',
+      process.env.NODE_ENV === 'production',
+    );
+    const passwordHash = await argon2.hash(password);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
@@ -108,6 +112,7 @@ export class TeachersService {
           passwordHash,
           role: UserRole.TEACHER,
           isActive: true,
+          mustChangePassword: mustChange,
         },
       });
 
@@ -132,7 +137,11 @@ export class TeachersService {
       where: { id: user.id },
       include: { profile: true },
     });
-    return new UserEntity(created!);
+    const entity = new UserEntity(created!);
+    if (mustChange && password) {
+      return { ...entity, temporaryPassword: password };
+    }
+    return entity;
   }
 
   async update(id: string, dto: UpdateTeacherDto) {

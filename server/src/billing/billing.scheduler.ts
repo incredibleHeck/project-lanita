@@ -39,12 +39,21 @@ export class BillingScheduler {
 
     for (const invoice of upcomingDue) {
       if (invoice.student.parent) {
+        const schoolId =
+          invoice.schoolId ?? invoice.student.schoolId ?? undefined;
+        if (!schoolId) {
+          this.logger.warn(
+            `Skipping fee reminder for invoice ${invoice.id}: no schoolId on invoice or student`,
+          );
+          continue;
+        }
         try {
           const totalAmount = Number(invoice.totalAmount);
           const amountPaid = Number(invoice.amountPaid);
           const balance = totalAmount - amountPaid;
 
           await this.notificationService.sendFeeReminder(
+            schoolId,
             invoice.student.parent.id,
             `${invoice.student.user.profile?.firstName || ''} ${invoice.student.user.profile?.lastName || ''}`.trim(),
             totalAmount,
@@ -84,12 +93,21 @@ export class BillingScheduler {
 
     for (const invoice of overdue) {
       if (invoice.student.parent) {
+        const schoolId =
+          invoice.schoolId ?? invoice.student.schoolId ?? undefined;
+        if (!schoolId) {
+          this.logger.warn(
+            `Skipping overdue notification for invoice ${invoice.id}: no schoolId on invoice or student`,
+          );
+          continue;
+        }
         try {
           const totalAmount = Number(invoice.totalAmount);
           const amountPaid = Number(invoice.amountPaid);
           const balance = totalAmount - amountPaid;
 
           await this.notificationService.sendFeeOverdue(
+            schoolId,
             invoice.student.parent.id,
             `${invoice.student.user.profile?.firstName || ''} ${invoice.student.user.profile?.lastName || ''}`.trim(),
             balance,

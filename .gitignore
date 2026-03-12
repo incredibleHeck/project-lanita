@@ -38,3 +38,6 @@ Thumbs.db
 
 # Gemini CLI
 .gemini/
+
+# Database backups
+backups/

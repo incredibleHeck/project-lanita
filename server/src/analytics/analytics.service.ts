@@ -2,8 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../prisma/prisma.service';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { AttendanceStatus, UserRole, InvoiceStatus } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
+
+const DEFAULT_AT_RISK_LIMIT = 200;
+const MAX_AT_RISK_LIMIT = 500;
 
 export interface AtRiskStudent {
   studentId: string;
@@ -127,31 +131,43 @@ export class AnalyticsService {
     return results;
   }
 
-  async getAtRiskStudents(useML = false): Promise<AtRiskStudent[]> {
+  async getAtRiskStudents(
+    useML = false,
+    limit?: number,
+  ): Promise<AtRiskStudent[]> {
+    const effectiveLimit = Math.min(
+      limit ?? DEFAULT_AT_RISK_LIMIT,
+      MAX_AT_RISK_LIMIT,
+    );
     if (useML) {
       try {
-        return await this.getAtRiskStudentsML();
+        return await this.getAtRiskStudentsML(effectiveLimit);
       } catch (error) {
         this.logger.warn(
           `ML prediction failed, falling back to rule-based: ${error}`,
         );
-        return this.getAtRiskStudentsRuleBased();
+        return this.getAtRiskStudentsRuleBased(effectiveLimit);
       }
     }
-    return this.getAtRiskStudentsRuleBased();
+    return this.getAtRiskStudentsRuleBased(effectiveLimit);
   }
 
-  async getAtRiskStudentsML(): Promise<AtRiskStudent[]> {
+  async getAtRiskStudentsML(limit = DEFAULT_AT_RISK_LIMIT): Promise<AtRiskStudent[]> {
     const mlServiceUrl = this.config.get<string>('ML_SERVICE_URL');
     if (!mlServiceUrl) {
       this.logger.warn('ML_SERVICE_URL not configured');
-      return this.getAtRiskStudentsRuleBased();
+      return this.getAtRiskStudentsRuleBased(limit);
     }
 
     const currentDate = new Date();
     const startOfCurrentTerm = new Date(currentDate.getFullYear(), 0, 1);
+    const schoolId = getTenantSchoolId();
+    const whereClause = schoolId ? { schoolId } : {};
 
     const students = await this.prisma.studentRecord.findMany({
+      where: whereClause,
+      take: Math.min(limit, MAX_AT_RISK_LIMIT),
+      orderBy: { enrollmentDate: 'desc' },
       include: {
         user: { include: { profile: true } },
         currentSection: { include: { class: true } },
@@ -238,11 +254,18 @@ export class AnalyticsService {
     }
   }
 
-  private async getAtRiskStudentsRuleBased(): Promise<AtRiskStudent[]> {
+  private async getAtRiskStudentsRuleBased(
+    limit = DEFAULT_AT_RISK_LIMIT,
+  ): Promise<AtRiskStudent[]> {
     const currentDate = new Date();
     const startOfCurrentTerm = new Date(currentDate.getFullYear(), 0, 1);
+    const schoolId = getTenantSchoolId();
+    const whereClause = schoolId ? { schoolId } : {};
 
     const students = await this.prisma.studentRecord.findMany({
+      where: whereClause,
+      take: Math.min(limit, MAX_AT_RISK_LIMIT),
+      orderBy: { enrollmentDate: 'desc' },
       include: {
         user: { include: { profile: true } },
         currentSection: { include: { class: true } },

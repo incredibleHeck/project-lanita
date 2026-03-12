@@ -16,31 +16,47 @@ export class NotificationService {
   ) {}
 
   async sendAttendanceAlert(
+    schoolId: string,
     parentId: string,
     studentName: string,
     status: AttendanceStatus,
     date: string,
+    options?: { phone?: string; parentFirstName?: string },
   ) {
-    const parent = await this.prisma.user.findUnique({
-      where: { id: parentId },
-      include: { profile: true },
-    });
-
-    if (!parent?.profile?.contactNumber) {
-      this.logger.debug(`Parent ${parentId} has no contact number - skipping`);
+    if (!schoolId) {
+      this.logger.warn(
+        'Cannot enqueue attendance alert: schoolId is required for tenant isolation',
+      );
       return;
+    }
+    let phone = options?.phone;
+    let parentFirstName = options?.parentFirstName;
+
+    if (!phone || parentFirstName === undefined) {
+      const parent = await this.prisma.user.findUnique({
+        where: { id: parentId },
+        include: { profile: true },
+      });
+
+      if (!parent?.profile?.contactNumber) {
+        this.logger.debug(`Parent ${parentId} has no contact number - skipping`);
+        return;
+      }
+      phone = parent.profile.contactNumber;
+      parentFirstName = parent.profile.firstName ?? '';
     }
 
     await this.notificationQueue.add('send-whatsapp', {
+      schoolId,
       recipientId: parentId,
       recipientType: 'PARENT' as const,
-      phone: parent.profile.contactNumber,
+      phone: phone!,
       templateName: 'attendance_alert',
       components: [
         {
           type: 'body',
           parameters: [
-            { type: 'text', text: parent.profile.firstName },
+            { type: 'text', text: parentFirstName ?? '' },
             { type: 'text', text: studentName },
             { type: 'text', text: status.toLowerCase() },
             { type: 'text', text: date },
@@ -51,6 +67,7 @@ export class NotificationService {
   }
 
   async sendFeeReminder(
+    schoolId: string,
     parentId: string,
     studentName: string,
     amount: number,
@@ -58,6 +75,12 @@ export class NotificationService {
     dueDate: string,
     balance: number,
   ) {
+    if (!schoolId) {
+      this.logger.warn(
+        'Cannot enqueue fee reminder: schoolId is required for tenant isolation',
+      );
+      return;
+    }
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -66,6 +89,7 @@ export class NotificationService {
     if (!parent?.profile?.contactNumber) return;
 
     await this.notificationQueue.add('send-whatsapp', {
+      schoolId,
       recipientId: parentId,
       recipientType: 'PARENT' as const,
       phone: parent.profile.contactNumber,
@@ -86,7 +110,18 @@ export class NotificationService {
     });
   }
 
-  async sendFeeOverdue(parentId: string, studentName: string, amount: number) {
+  async sendFeeOverdue(
+    schoolId: string,
+    parentId: string,
+    studentName: string,
+    amount: number,
+  ) {
+    if (!schoolId) {
+      this.logger.warn(
+        'Cannot enqueue fee overdue: schoolId is required for tenant isolation',
+      );
+      return;
+    }
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -95,6 +130,7 @@ export class NotificationService {
     if (!parent?.profile?.contactNumber) return;
 
     await this.notificationQueue.add('send-whatsapp', {
+      schoolId,
       recipientId: parentId,
       recipientType: 'PARENT' as const,
       phone: parent.profile.contactNumber,
@@ -113,11 +149,18 @@ export class NotificationService {
   }
 
   async sendReportReadyNotification(
+    schoolId: string,
     parentId: string,
     studentName: string,
     term: string,
     portalUrl: string,
   ) {
+    if (!schoolId) {
+      this.logger.warn(
+        'Cannot enqueue report ready notification: schoolId is required for tenant isolation',
+      );
+      return;
+    }
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -126,6 +169,7 @@ export class NotificationService {
     if (!parent?.profile?.contactNumber) return;
 
     await this.notificationQueue.add('send-whatsapp', {
+      schoolId,
       recipientId: parentId,
       recipientType: 'PARENT' as const,
       phone: parent.profile.contactNumber,
@@ -145,10 +189,17 @@ export class NotificationService {
   }
 
   async sendAnnouncement(
+    schoolId: string,
     recipientId: string,
     schoolName: string,
     content: string,
   ) {
+    if (!schoolId) {
+      this.logger.warn(
+        'Cannot enqueue announcement: schoolId is required for tenant isolation',
+      );
+      return;
+    }
     const user = await this.prisma.user.findUnique({
       where: { id: recipientId },
       include: { profile: true },
@@ -157,6 +208,7 @@ export class NotificationService {
     if (!user?.profile?.contactNumber) return;
 
     await this.notificationQueue.add('send-whatsapp', {
+      schoolId,
       recipientId,
       recipientType: 'PARENT' as const,
       phone: user.profile.contactNumber,

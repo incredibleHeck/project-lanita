@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { CreateAttendanceBatchDto } from './dto/create-attendance-batch.dto';
 import { AttendanceStatus } from '@prisma/client';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
 @Injectable()
 export class AttendanceService {
@@ -27,87 +28,105 @@ export class AttendanceService {
 
     const attendanceDate = new Date(date);
 
-    const results = await Promise.all(
-      records.map(async (record) => {
-        const existingRecord = await this.prisma.attendanceRecord.findUnique({
-          where: {
-            studentId_allocationId_date: {
-              studentId: record.studentId,
-              allocationId: subjectAllocationId,
-              date: attendanceDate,
-            },
-          },
-        });
+    const existingRecords = await this.prisma.attendanceRecord.findMany({
+      where: {
+        allocationId: subjectAllocationId,
+        date: attendanceDate,
+        studentId: { in: records.map((r) => r.studentId) },
+      },
+    });
+    const existingMap = new Map(
+      existingRecords.map((r) => [
+        `${r.studentId}-${r.allocationId}-${r.date.toISOString()}`,
+        r,
+      ]),
+    );
 
-        if (existingRecord && offlineTimestamp) {
-          const serverTimestamp = existingRecord.updatedAt.getTime();
+    const recordsToUpsert = records.filter((record) => {
+      const key = `${record.studentId}-${subjectAllocationId}-${attendanceDate.toISOString()}`;
+      const existing = existingMap.get(key);
+      if (existing && offlineTimestamp && existing.updatedAt.getTime() >= offlineTimestamp) {
+        this.logger.debug(
+          `Skipping update for student ${record.studentId}: server record is newer ` +
+            `(offline: ${offlineTimestamp}, server: ${existing.updatedAt.getTime()})`,
+        );
+        return false;
+      }
+      return true;
+    });
 
-          if (offlineTimestamp <= serverTimestamp) {
-            this.logger.debug(
-              `Skipping update for student ${record.studentId}: server record is newer ` +
-                `(offline: ${offlineTimestamp}, server: ${serverTimestamp})`,
-            );
-            return {
-              studentId: record.studentId,
-              action: 'skipped',
-              reason: 'server_newer',
-            };
-          }
-        }
+    const skipped = records.length - recordsToUpsert.length;
 
-        await this.prisma.attendanceRecord.upsert({
-          where: {
-            studentId_allocationId_date: {
-              studentId: record.studentId,
-              allocationId: subjectAllocationId,
-              date: attendanceDate,
-            },
-          },
-          update: {
-            status: record.status,
-            remarks: record.remarks,
-          },
-          create: {
+    const upsertOps = recordsToUpsert.map((record) =>
+      this.prisma.attendanceRecord.upsert({
+        where: {
+          studentId_allocationId_date: {
             studentId: record.studentId,
             allocationId: subjectAllocationId,
             date: attendanceDate,
-            status: record.status,
-            remarks: record.remarks,
+          },
+        },
+        update: {
+          status: record.status,
+          remarks: record.remarks,
+        },
+        create: {
+          studentId: record.studentId,
+          allocationId: subjectAllocationId,
+          date: attendanceDate,
+          status: record.status,
+          remarks: record.remarks,
+        },
+      }),
+    );
+    await this.prisma.$transaction(upsertOps);
+
+    const updated = recordsToUpsert.length;
+
+    const absentLateStudentIds = records
+      .filter(
+        (r) =>
+          r.status === AttendanceStatus.ABSENT ||
+          r.status === AttendanceStatus.LATE,
+      )
+      .map((r) => r.studentId);
+
+    if (absentLateStudentIds.length > 0) {
+      const schoolId = getTenantSchoolId();
+      if (!schoolId) {
+        this.logger.warn(
+          'Cannot send attendance alerts: tenant context (schoolId) is missing',
+        );
+      } else {
+        const students = await this.prisma.studentRecord.findMany({
+          where: { id: { in: absentLateStudentIds } },
+          include: {
+            parent: { include: { profile: true } },
+            user: { include: { profile: true } },
           },
         });
 
-        return { studentId: record.studentId, action: 'updated' };
-      }),
-    );
-
-    const updated = results.filter((r) => r.action === 'updated').length;
-    const skipped = results.filter((r) => r.action === 'skipped').length;
-
-    for (const record of records) {
-      if (
-        record.status === AttendanceStatus.ABSENT ||
-        record.status === AttendanceStatus.LATE
-      ) {
-        try {
-          const student = await this.prisma.studentRecord.findUnique({
-            where: { id: record.studentId },
-            include: {
-              parent: true,
-              user: { include: { profile: true } },
-            },
-          });
-          if (student?.parent) {
+        for (const student of students) {
+          if (!student.parent?.profile?.contactNumber) continue;
+          try {
             const studentName =
-              `${student.user.profile?.firstName || ''} ${student.user.profile?.lastName || ''}`.trim();
+              `${student.user.profile?.firstName || ''} ${student.user.profile?.lastName || ''}`.trim() ||
+              'Your child';
+            const record = records.find((r) => r.studentId === student.id)!;
             await this.notificationService.sendAttendanceAlert(
+              schoolId,
               student.parent.id,
-              studentName || 'Your child',
+              studentName,
               record.status,
               attendanceDate.toISOString().split('T')[0],
+              {
+                phone: student.parent.profile.contactNumber,
+                parentFirstName: student.parent.profile.firstName ?? '',
+              },
             );
+          } catch (err) {
+            this.logger.warn(`Failed to send attendance alert: ${err}`);
           }
-        } catch (err) {
-          this.logger.warn(`Failed to send attendance alert: ${err}`);
         }
       }
     }

@@ -94,6 +94,10 @@ api.interceptors.response.use(
       if (typeof window !== 'undefined') {
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
+        if (data.mustChangePassword) {
+          window.location.href = '/change-password';
+          return Promise.reject(error);
+        }
       }
 
       processQueue(null, data.accessToken);

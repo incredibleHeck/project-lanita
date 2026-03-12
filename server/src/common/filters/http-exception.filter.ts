@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import {
   ExceptionFilter,
   Catch,
@@ -28,10 +29,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? exResponse
           : (exResponse as any).message || exception.message;
     } else if (exception instanceof Error) {
-      this.logger.error(
-        `Unhandled exception: ${exception.message}`,
-        exception.stack,
-      );
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        const errorId = crypto.randomUUID();
+        this.logger.error(
+          `Unhandled exception [${errorId}]. Check application logs for full stack.`,
+        );
+      } else {
+        this.logger.error(
+          `Unhandled exception: ${exception.message}`,
+          exception.stack,
+        );
+      }
     }
 
     response.status(status).json({

@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { NotificationService } from '../notifications/notification.service';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
 @Injectable()
 export class AnnouncementsService {
+  private readonly logger = new Logger(AnnouncementsService.name);
+
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
@@ -39,6 +42,14 @@ export class AnnouncementsService {
     scope: string;
     scopeId: string | null;
   }) {
+    const schoolId = getTenantSchoolId();
+    if (!schoolId) {
+      this.logger.warn(
+        'Cannot send announcement notifications: tenant context (schoolId) is missing',
+      );
+      return;
+    }
+
     const schoolName = 'Lanita School';
     const content = `${announcement.title}: ${announcement.content.slice(0, 200)}`;
 
@@ -49,6 +60,7 @@ export class AnnouncementsService {
       });
       for (const parent of parents) {
         await this.notificationService.sendAnnouncement(
+          schoolId,
           parent.id,
           schoolName,
           content,
@@ -73,6 +85,7 @@ export class AnnouncementsService {
       );
       for (const parentId of parentIds) {
         await this.notificationService.sendAnnouncement(
+          schoolId,
           parentId,
           schoolName,
           content,

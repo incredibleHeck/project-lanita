@@ -66,6 +66,7 @@ PostgreSQL is where all the data (students, teachers, attendance) is stored.
 5. Click **Next** through the installation wizard
 6. **IMPORTANT:** When asked for a password, enter: `postgres123`
    - Write this down! You'll need it later
+   - This is for local development only. Use a strong, unique password for production databases.
 7. Keep the default port as `5432`
 8. Click **Next** until installation completes
 9. Uncheck "Launch Stack Builder" at the end and click **Finish**
@@ -97,28 +98,30 @@ The environment file tells the project how to connect to the database.
    ```
    Press **Enter**
 
-2. Now type:
+2. Copy the example environment file:
+   ```
+   copy ..\.env.example .env
+   ```
+   Press **Enter**
+
+3. Open the file in Notepad to customize it:
    ```
    notepad .env
    ```
    Press **Enter**
 
-3. Notepad will ask "Do you want to create a new file?" - Click **Yes**
-
-4. Copy and paste the following text into Notepad:
-   ```
-   DATABASE_URL="postgresql://postgres:postgres123@localhost:5432/lanita_db"
-   JWT_ACCESS_SECRET="my-super-secret-access-key-12345"
-   JWT_REFRESH_SECRET="my-super-secret-refresh-key-67890"
-   ```
+4. In the `.env` file, find `DATABASE_URL` and replace `CHANGE_ME` with the password you chose in Step 2.
 
 5. Press `Ctrl + S` to save
 6. Close Notepad
+
+> **Security:** Never use values from this guide or `.env.example` in production. Generate strong random secrets (e.g. `openssl rand -base64 32`) and use a unique database password.
 
 ### What do these settings mean?
 - `DATABASE_URL`: Tells the app where the database is and how to connect
 - `JWT_ACCESS_SECRET`: A secret code used to keep user logins secure
 - `JWT_REFRESH_SECRET`: Another secret code for security
+- For production deployment, see `.env.production.example` and use cryptographically random secrets.
 
 ---
 
@@ -359,6 +362,7 @@ docker-compose down -v
 docker-compose up -d
 
 # Option 1: With .env file (recommended)
+# Replace placeholders with strong random values. Never use example values in production.
 echo "POSTGRES_PASSWORD=your-secure-password" > .env
 echo "JWT_ACCESS_SECRET=your-jwt-secret" >> .env
 echo "JWT_REFRESH_SECRET=your-refresh-secret" >> .env

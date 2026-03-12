@@ -5,6 +5,10 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { AnalyticsService, AtRiskStudent } from './analytics.service';
+import {
+  AtRiskQueryDto,
+  getEffectiveLimit,
+} from './dto/at-risk-query.dto';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -21,7 +25,13 @@ export class AnalyticsController {
 
   @Get('at-risk')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  getAtRiskStudents(@Query('useML') useML?: string): Promise<AtRiskStudent[]> {
-    return this.analyticsService.getAtRiskStudents(useML === 'true');
+  getAtRiskStudents(
+    @Query('useML') useML?: string,
+    @Query() query?: AtRiskQueryDto,
+  ): Promise<AtRiskStudent[]> {
+    return this.analyticsService.getAtRiskStudents(
+      useML === 'true',
+      getEffectiveLimit(query?.limit),
+    );
   }
 }

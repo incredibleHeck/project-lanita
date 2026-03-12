@@ -7,10 +7,10 @@ import { NotificationService } from '../notifications/notification.service';
 const mockPrisma = {
   subjectAllocation: { findUnique: jest.fn() },
   attendanceRecord: {
-    findUnique: jest.fn(),
-    upsert: jest.fn(),
     findMany: jest.fn(),
+    upsert: jest.fn(),
   },
+  $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
 };
 
 const mockNotificationService = {
@@ -62,7 +62,7 @@ describe('AttendanceService', () => {
         subjectId: 'sub-1',
         teacherId: 'teacher-1',
       });
-      prisma.attendanceRecord.findUnique.mockResolvedValue(null);
+      prisma.attendanceRecord.findMany.mockResolvedValue([]);
       prisma.attendanceRecord.upsert.mockResolvedValue({
         id: 'att-1',
         studentId: 'stu-1',
@@ -77,6 +77,8 @@ describe('AttendanceService', () => {
 
       expect(result).toHaveProperty('updated');
       expect(result.updated).toBeGreaterThanOrEqual(0);
+      expect(prisma.attendanceRecord.findMany).toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.attendanceRecord.upsert).toHaveBeenCalled();
     });
   });

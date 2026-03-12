@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/format";
-import { PaystackPaymentButton } from "@/components/billing/paystack-button";
+import { InvoicePaystackButton } from "@/components/billing/paystack-button";
 import { Smartphone, CreditCard, Building2, Wallet } from "lucide-react";
 import type { Invoice } from "@/components/billing/invoice-columns";
 
@@ -78,7 +78,7 @@ export function PayFeesDialog({
                         Balance: {formatCurrency(invoice.balance)}
                       </p>
                     </div>
-                    <PaystackPaymentButton
+                    <InvoicePaystackButton
                       invoiceId={invoice.id}
                       size="sm"
                       onSuccess={() => {
@@ -86,7 +86,7 @@ export function PayFeesDialog({
                       }}
                     >
                       Pay Now
-                    </PaystackPaymentButton>
+                    </InvoicePaystackButton>
                   </div>
                 ))}
               </div>

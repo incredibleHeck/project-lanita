@@ -56,7 +56,7 @@ export class LmsModule {}
 - **Inject** `PrismaService` and `TenantService` in the constructor.
 - **Tenant context:** This codebase uses `TenantService` (request-scoped), which exposes `schoolId` (and `school`) from the current request ([server/src/common/tenant/tenant.service.ts](server/src/common/tenant/tenant.service.ts)). There is no `tenantId`; use `tenantService.schoolId` for tenant scoping when you implement CRUD.
 - **Scope:** Because `TenantService` is `Scope.REQUEST`, any service that injects it becomes request-scoped. Mark `LmsService` as request-scoped so DI is consistent:
-  `@Injectable({ scope: Scope.REQUEST })`
+`@Injectable({ scope: Scope.REQUEST })`
 - No CRUD methods yet; leave the class body minimal (e.g. a single placeholder method or empty).
 
 Example:

@@ -50,7 +50,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const response = await api.post("/auth/signin", data);
-      const { accessToken, refreshToken } = response.data;
+      const { accessToken, refreshToken, mustChangePassword } = response.data;
 
       // Store tokens in localStorage
       localStorage.setItem("accessToken", accessToken);
@@ -68,7 +68,7 @@ export default function LoginPage() {
       );
 
       toast.success("Login successful!");
-      router.push("/dashboard");
+      router.push(mustChangePassword ? "/change-password" : "/dashboard");
     } catch (error: unknown) {
       console.error("Login error:", error);
       const err = error as {
