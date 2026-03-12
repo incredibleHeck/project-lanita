@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAllocationDto } from './dto/create-allocation.dto';
 import { UserRole } from '@prisma/client';
@@ -8,7 +13,8 @@ export class AllocationsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createAllocationDto: CreateAllocationDto) {
-    const { sectionId, subjectId, teacherId, academicYearId } = createAllocationDto;
+    const { sectionId, subjectId, teacherId, academicYearId } =
+      createAllocationDto;
 
     // 1. Validate Teacher Role
     const teacher = await this.prisma.user.findUnique({
@@ -34,8 +40,10 @@ export class AllocationsService {
       }
       targetYearId = activeYear.id;
     } else {
-        const yearExists = await this.prisma.academicYear.findUnique({ where: { id: targetYearId } });
-        if (!yearExists) throw new NotFoundException('Academic Year not found');
+      const yearExists = await this.prisma.academicYear.findUnique({
+        where: { id: targetYearId },
+      });
+      if (!yearExists) throw new NotFoundException('Academic Year not found');
     }
 
     // 3. Check for existing allocation (One teacher per subject per section per year)
@@ -51,7 +59,9 @@ export class AllocationsService {
     });
 
     if (existingAllocation) {
-      throw new ConflictException('Subject is already allocated in this section for this academic year');
+      throw new ConflictException(
+        'Subject is already allocated in this section for this academic year',
+      );
     }
 
     // Action: Create
@@ -66,18 +76,18 @@ export class AllocationsService {
         section: true,
         subject: true,
         teacher: {
-            select: {
-                id: true,
-                email: true,
-                profile: {
-                    select: {
-                        firstName: true,
-                        lastName: true
-                    }
-                }
-            }
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
         },
-        academicYear: true
+        academicYear: true,
       },
     });
   }
@@ -87,35 +97,35 @@ export class AllocationsService {
       where: { teacherId },
       include: {
         section: {
-            select: {
-                id: true,
+          select: {
+            id: true,
+            name: true,
+            class: {
+              select: {
                 name: true,
-                class: {
-                    select: {
-                        name: true,
-                        code: true
-                    }
-                }
-            }
+                code: true,
+              },
+            },
+          },
         },
         subject: {
-            select: {
-                id: true,
-                name: true,
-                code: true
-            }
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
         },
         academicYear: {
-            select: {
-                name: true,
-                startDate: true,
-                endDate: true
-            }
-        }
+          select: {
+            name: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
   }
 
@@ -130,26 +140,26 @@ export class AllocationsService {
             class: {
               select: {
                 name: true,
-                code: true
-              }
-            }
-          }
+                code: true,
+              },
+            },
+          },
         },
         subject: {
           select: {
             id: true,
             name: true,
-            code: true
-          }
+            code: true,
+          },
         },
         academicYear: {
           select: {
             name: true,
             startDate: true,
-            endDate: true
-          }
-        }
-      }
+            endDate: true,
+          },
+        },
+      },
     });
 
     if (!allocation) {

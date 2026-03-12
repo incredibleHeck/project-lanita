@@ -74,12 +74,17 @@ export class TenantMiddleware implements NestMiddleware {
     const host = req.headers.host || '';
     const parts = host.split('.');
     const subdomain = parts.length > 2 ? parts[0] : null;
-    if (subdomain && !['www', 'api', 'localhost'].includes(subdomain.toLowerCase())) {
+    if (
+      subdomain &&
+      !['www', 'api', 'localhost'].includes(subdomain.toLowerCase())
+    ) {
       return subdomain.toUpperCase();
     }
 
     // Option 3: From JWT (after auth) - when schoolCode/schoolId added to JWT payload
-    const user = req['user'] as { schoolCode?: string; schoolId?: string } | undefined;
+    const user = req['user'] as
+      | { schoolCode?: string; schoolId?: string }
+      | undefined;
     if (user?.schoolCode) {
       return String(user.schoolCode).toUpperCase();
     }

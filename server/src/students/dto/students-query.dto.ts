@@ -16,7 +16,9 @@ export class StudentsQueryDto extends PaginationQueryDto {
   @IsUUID()
   sectionId?: string;
 
-  @ApiPropertyOptional({ description: 'Search by first name, last name, or admission number' })
+  @ApiPropertyOptional({
+    description: 'Search by first name, last name, or admission number',
+  })
   @IsOptional()
   @IsString()
   search?: string;

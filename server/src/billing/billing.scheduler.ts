@@ -53,7 +53,9 @@ export class BillingScheduler {
             balance,
           );
         } catch (err) {
-          this.logger.warn(`Failed to send fee reminder for invoice ${invoice.id}: ${err}`);
+          this.logger.warn(
+            `Failed to send fee reminder for invoice ${invoice.id}: ${err}`,
+          );
         }
       }
     }
@@ -93,7 +95,9 @@ export class BillingScheduler {
             balance,
           );
         } catch (err) {
-          this.logger.warn(`Failed to send overdue notification for invoice ${invoice.id}: ${err}`);
+          this.logger.warn(
+            `Failed to send overdue notification for invoice ${invoice.id}: ${err}`,
+          );
         }
       }
     }

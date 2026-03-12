@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
@@ -28,7 +38,10 @@ export class ClassesController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
-  findOne(@Param('id') id: string, @Query('includeSections') includeSections?: string) {
+  findOne(
+    @Param('id') id: string,
+    @Query('includeSections') includeSections?: string,
+  ) {
     return this.classesService.findOne(id, includeSections === 'true');
   }
 

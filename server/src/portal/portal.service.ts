@@ -27,65 +27,75 @@ export interface StudentDashboardSummary {
 export class PortalService {
   constructor(private prisma: PrismaService) {}
 
-  async getStudentDashboard(studentUserId: string): Promise<StudentDashboardSummary> {
+  async getStudentDashboard(
+    studentUserId: string,
+  ): Promise<StudentDashboardSummary> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const [studentRecord, monthlyAttendance, todayAttendance, recentResults] = await Promise.all([
-      this.prisma.studentRecord.findUnique({
-        where: { userId: studentUserId },
-        include: {
-          user: {
-            include: {
-              profile: true,
+    const [studentRecord, monthlyAttendance, todayAttendance, recentResults] =
+      await Promise.all([
+        this.prisma.studentRecord.findUnique({
+          where: { userId: studentUserId },
+          include: {
+            user: {
+              include: {
+                profile: true,
+              },
+            },
+            currentSection: {
+              include: {
+                class: true,
+              },
             },
           },
-          currentSection: {
-            include: {
-              class: true,
+        }),
+
+        this.prisma.attendanceRecord.findMany({
+          where: {
+            student: { userId: studentUserId },
+            date: {
+              gte: startOfMonth,
+              lte: endOfMonth,
             },
           },
-        },
-      }),
+        }),
 
-      this.prisma.attendanceRecord.findMany({
-        where: {
-          student: { userId: studentUserId },
-          date: {
-            gte: startOfMonth,
-            lte: endOfMonth,
+        this.prisma.attendanceRecord.findFirst({
+          where: {
+            student: { userId: studentUserId },
+            date: {
+              gte: today,
+              lt: tomorrow,
+            },
           },
-        },
-      }),
+        }),
 
-      this.prisma.attendanceRecord.findFirst({
-        where: {
-          student: { userId: studentUserId },
-          date: {
-            gte: today,
-            lt: tomorrow,
+        this.prisma.result.findMany({
+          where: {
+            student: { userId: studentUserId },
           },
-        },
-      }),
-
-      this.prisma.result.findMany({
-        where: {
-          student: { userId: studentUserId },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        include: {
-          subject: true,
-          exam: true,
-        },
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          include: {
+            subject: true,
+            exam: true,
+          },
+        }),
+      ]);
 
     if (!studentRecord) {
       throw new NotFoundException('Student record not found');
@@ -93,11 +103,14 @@ export class PortalService {
 
     const totalAttendanceDays = monthlyAttendance.length;
     const presentDays = monthlyAttendance.filter(
-      (a) => a.status === AttendanceStatus.PRESENT || a.status === AttendanceStatus.LATE
+      (a) =>
+        a.status === AttendanceStatus.PRESENT ||
+        a.status === AttendanceStatus.LATE,
     ).length;
-    const attendancePercentage = totalAttendanceDays > 0
-      ? Math.round((presentDays / totalAttendanceDays) * 100)
-      : 0;
+    const attendancePercentage =
+      totalAttendanceDays > 0
+        ? Math.round((presentDays / totalAttendanceDays) * 100)
+        : 0;
 
     return {
       studentId: studentRecord.id,
@@ -121,7 +134,10 @@ export class PortalService {
     };
   }
 
-  async verifyParentAccess(parentUserId: string, studentUserId: string): Promise<boolean> {
+  async verifyParentAccess(
+    parentUserId: string,
+    studentUserId: string,
+  ): Promise<boolean> {
     const studentRecord = await this.prisma.studentRecord.findUnique({
       where: { userId: studentUserId },
     });

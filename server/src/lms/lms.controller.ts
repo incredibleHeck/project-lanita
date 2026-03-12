@@ -61,7 +61,12 @@ export class LmsController {
   }
 
   @Get('modules/:moduleId')
-  @Roles(UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(
+    UserRole.STUDENT,
+    UserRole.TEACHER,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+  )
   getModuleWithContent(@Param('moduleId', ParseUUIDPipe) moduleId: string) {
     return this.lmsService.getModuleWithContent(moduleId);
   }

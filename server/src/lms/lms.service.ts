@@ -164,9 +164,7 @@ export class LmsService {
       },
     });
     if (existing) {
-      throw new ConflictException(
-        'You have already submitted this assignment',
-      );
+      throw new ConflictException('You have already submitted this assignment');
     }
 
     try {

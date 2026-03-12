@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsDateString, IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDateString,
+  IsBoolean,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateTermDto {
   @IsString()

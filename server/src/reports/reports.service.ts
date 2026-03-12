@@ -11,7 +11,11 @@ export class ReportsService {
     private aiService: AiService,
   ) {}
 
-  async generateStudentReport(studentId: string, examId: string, includeAiComment = false) {
+  async generateStudentReport(
+    studentId: string,
+    examId: string,
+    includeAiComment = false,
+  ) {
     const exam = await this.prisma.exam.findUnique({
       where: { id: examId },
       include: { academicYear: true },
@@ -80,12 +84,17 @@ export class ReportsService {
 
     const strongestSubject = this.getStrongestSubject(formattedResults);
     const weakestSubject = this.getWeakestSubject(formattedResults);
-    const trend = await this.calculateTrend(studentRecord.id, examId, exam.academicYearId);
+    const trend = await this.calculateTrend(
+      studentRecord.id,
+      examId,
+      exam.academicYearId,
+    );
 
     let aiComment: string | undefined;
     if (includeAiComment) {
-      const studentName = `${studentRecord.user.profile?.firstName ?? ''} ${studentRecord.user.profile?.lastName ?? ''}`.trim();
-      
+      const studentName =
+        `${studentRecord.user.profile?.firstName ?? ''} ${studentRecord.user.profile?.lastName ?? ''}`.trim();
+
       const context: StudentReportContext = {
         studentName,
         rank,
@@ -142,7 +151,10 @@ export class ReportsService {
     const studentAverages = new Map<string, { total: number; count: number }>();
 
     for (const result of classResults) {
-      const existing = studentAverages.get(result.studentId) || { total: 0, count: 0 };
+      const existing = studentAverages.get(result.studentId) || {
+        total: 0,
+        count: 0,
+      };
       existing.total += result.score;
       existing.count += 1;
       studentAverages.set(result.studentId, existing);
@@ -159,13 +171,17 @@ export class ReportsService {
     return { rank: rank || 1, totalStudents: sortedAverages.length };
   }
 
-  private getStrongestSubject(results: Array<{ subject: string; score: number }>): string | null {
+  private getStrongestSubject(
+    results: Array<{ subject: string; score: number }>,
+  ): string | null {
     if (results.length === 0) return null;
     const sorted = [...results].sort((a, b) => b.score - a.score);
     return sorted[0].subject;
   }
 
-  private getWeakestSubject(results: Array<{ subject: string; score: number }>): string | null {
+  private getWeakestSubject(
+    results: Array<{ subject: string; score: number }>,
+  ): string | null {
     if (results.length === 0) return null;
     const sorted = [...results].sort((a, b) => a.score - b.score);
     return sorted[0].subject;

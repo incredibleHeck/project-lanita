@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsUUID, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsUUID,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  Min,
+} from 'class-validator';
 import { PaymentMethod } from '@prisma/client';
 
 export class RecordPaymentDto {

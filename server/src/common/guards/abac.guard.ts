@@ -99,8 +99,7 @@ export class ABACGuard implements CanActivate {
   ): Promise<boolean> {
     if (user.role !== 'TEACHER') return true;
 
-    const sectionId =
-      request.params['sectionId'] || request.body?.sectionId;
+    const sectionId = request.params['sectionId'] || request.body?.sectionId;
     if (!sectionId) return true;
 
     const allocation = await this.prisma.subjectAllocation.findFirst({

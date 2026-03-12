@@ -50,9 +50,7 @@ describe('AttendanceService', () => {
         service.markRegister({
           subjectAllocationId: 'invalid-id',
           date: '2025-03-07',
-          records: [
-            { studentId: 'stu-1', status: 'PRESENT' },
-          ],
+          records: [{ studentId: 'stu-1', status: 'PRESENT' }],
         }),
       ).rejects.toThrow(NotFoundException);
     });

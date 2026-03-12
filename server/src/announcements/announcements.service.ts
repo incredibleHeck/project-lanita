@@ -91,10 +91,16 @@ export class AnnouncementsService {
 
     const scopeConditions: any[] = [{ scope: 'SCHOOL_WIDE' }];
     if (classIds.length > 0) {
-      scopeConditions.push({ scope: 'CLASS' as const, scopeId: { in: classIds } });
+      scopeConditions.push({
+        scope: 'CLASS' as const,
+        scopeId: { in: classIds },
+      });
     }
     if (sectionIds.length > 0) {
-      scopeConditions.push({ scope: 'SECTION' as const, scopeId: { in: sectionIds } });
+      scopeConditions.push({
+        scope: 'SECTION' as const,
+        scopeId: { in: sectionIds },
+      });
     }
 
     return this.prisma.announcement.findMany({

@@ -47,19 +47,24 @@ export class AnalyticsService {
   ) {}
 
   async getDashboardStats() {
-    const [totalStudents, totalTeachers, currentYear, classes] = await Promise.all([
-      this.prisma.user.count({ where: { role: UserRole.STUDENT, isActive: true } }),
-      this.prisma.user.count({ where: { role: UserRole.TEACHER, isActive: true } }),
-      this.prisma.academicYear.findFirst({ where: { isCurrent: true } }),
-      this.prisma.class.findMany({
-        include: {
-          sections: {
-            include: { _count: { select: { students: true } } },
+    const [totalStudents, totalTeachers, currentYear, classes] =
+      await Promise.all([
+        this.prisma.user.count({
+          where: { role: UserRole.STUDENT, isActive: true },
+        }),
+        this.prisma.user.count({
+          where: { role: UserRole.TEACHER, isActive: true },
+        }),
+        this.prisma.academicYear.findFirst({ where: { isCurrent: true } }),
+        this.prisma.class.findMany({
+          include: {
+            sections: {
+              include: { _count: { select: { students: true } } },
+            },
           },
-        },
-        orderBy: { name: 'asc' },
-      }),
-    ]);
+          orderBy: { name: 'asc' },
+        }),
+      ]);
 
     const distributionByClass = classes.map((cls) => ({
       name: cls.name,
@@ -81,7 +86,7 @@ export class AnalyticsService {
     const today = new Date();
     const days: Date[] = [];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let d = new Date(today);
+    const d = new Date(today);
 
     while (days.length < 5) {
       const dow = d.getDay();
@@ -104,9 +109,13 @@ export class AnalyticsService {
       });
 
       const present = records.filter(
-        (r) => r.status === AttendanceStatus.PRESENT || r.status === AttendanceStatus.LATE,
+        (r) =>
+          r.status === AttendanceStatus.PRESENT ||
+          r.status === AttendanceStatus.LATE,
       ).length;
-      const absent = records.filter((r) => r.status === AttendanceStatus.ABSENT).length;
+      const absent = records.filter(
+        (r) => r.status === AttendanceStatus.ABSENT,
+      ).length;
 
       results.push({
         day: dayNames[day.getDay()],
@@ -123,7 +132,9 @@ export class AnalyticsService {
       try {
         return await this.getAtRiskStudentsML();
       } catch (error) {
-        this.logger.warn(`ML prediction failed, falling back to rule-based: ${error}`);
+        this.logger.warn(
+          `ML prediction failed, falling back to rule-based: ${error}`,
+        );
         return this.getAtRiskStudentsRuleBased();
       }
     }
@@ -161,13 +172,18 @@ export class AnalyticsService {
 
     const features: MLStudentFeatures[] = students.map((student) => {
       const attendanceRate = this.calculateAttendanceRate(student.attendance);
-      const { averageGrade, gradeTrend } = this.calculateGradeMetrics(student.results);
+      const { averageGrade, gradeTrend } = this.calculateGradeMetrics(
+        student.results,
+      );
       const absenceStreak = this.calculateAbsenceStreak(student.attendance);
-      const lateCount = student.attendance.filter((a) => a.status === AttendanceStatus.LATE).length;
+      const lateCount = student.attendance.filter(
+        (a) => a.status === AttendanceStatus.LATE,
+      ).length;
       const feeStatus = this.calculateFeeStatus(student.invoices);
       const parentEngagement = this.calculateParentEngagement(student);
       const daysSinceEnrollment = Math.floor(
-        (currentDate.getTime() - new Date(student.enrollmentDate).getTime()) / (1000 * 60 * 60 * 24),
+        (currentDate.getTime() - new Date(student.enrollmentDate).getTime()) /
+          (1000 * 60 * 60 * 24),
       );
 
       return {
@@ -250,16 +266,23 @@ export class AnalyticsService {
       const totalAttendanceRecords = student.attendance.length;
       if (totalAttendanceRecords > 0) {
         const presentCount = student.attendance.filter(
-          (a) => a.status === AttendanceStatus.PRESENT || a.status === AttendanceStatus.LATE,
+          (a) =>
+            a.status === AttendanceStatus.PRESENT ||
+            a.status === AttendanceStatus.LATE,
         ).length;
-        const attendancePercentage = (presentCount / totalAttendanceRecords) * 100;
+        const attendancePercentage =
+          (presentCount / totalAttendanceRecords) * 100;
 
         if (attendancePercentage < 70) {
           riskScore += 50;
-          riskFactors.push(`Low Attendance (${attendancePercentage.toFixed(1)}%)`);
+          riskFactors.push(
+            `Low Attendance (${attendancePercentage.toFixed(1)}%)`,
+          );
         } else if (attendancePercentage < 85) {
           riskScore += 30;
-          riskFactors.push(`Low Attendance (${attendancePercentage.toFixed(1)}%)`);
+          riskFactors.push(
+            `Low Attendance (${attendancePercentage.toFixed(1)}%)`,
+          );
         }
       }
 
@@ -267,7 +290,7 @@ export class AnalyticsService {
       for (const result of student.results) {
         if (result.score < 50) {
           const subjectName = result.subject.name;
-          
+
           if (!failingSubjects.has(subjectName)) {
             failingSubjects.add(subjectName);
             riskScore += 15;
@@ -316,7 +339,9 @@ export class AnalyticsService {
   ): number {
     if (attendance.length === 0) return 100;
     const presentCount = attendance.filter(
-      (a) => a.status === AttendanceStatus.PRESENT || a.status === AttendanceStatus.LATE,
+      (a) =>
+        a.status === AttendanceStatus.PRESENT ||
+        a.status === AttendanceStatus.LATE,
     ).length;
     return (presentCount / attendance.length) * 100;
   }
@@ -328,18 +353,23 @@ export class AnalyticsService {
       return { averageGrade: 0, gradeTrend: 0 };
     }
 
-    const averageGrade = results.reduce((sum, r) => sum + r.score, 0) / results.length;
+    const averageGrade =
+      results.reduce((sum, r) => sum + r.score, 0) / results.length;
 
     if (results.length < 2) {
       return { averageGrade, gradeTrend: 0 };
     }
 
     const sorted = [...results].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
     const half = Math.floor(sorted.length / 2);
-    const olderAvg = sorted.slice(0, half).reduce((s, r) => s + r.score, 0) / half;
-    const newerAvg = sorted.slice(half).reduce((s, r) => s + r.score, 0) / (sorted.length - half);
+    const olderAvg =
+      sorted.slice(0, half).reduce((s, r) => s + r.score, 0) / half;
+    const newerAvg =
+      sorted.slice(half).reduce((s, r) => s + r.score, 0) /
+      (sorted.length - half);
 
     return { averageGrade, gradeTrend: newerAvg - olderAvg };
   }
@@ -387,7 +417,9 @@ export class AnalyticsService {
     }
   }
 
-  private calculateParentEngagement(student: { parentId?: string | null }): number {
+  private calculateParentEngagement(student: {
+    parentId?: string | null;
+  }): number {
     if (!student.parentId) return 0;
     return 50;
   }

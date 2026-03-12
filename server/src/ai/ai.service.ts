@@ -34,7 +34,9 @@ export class AiService {
       this.openai = new OpenAI({ apiKey });
       this.logger.log('OpenAI client initialized');
     } else {
-      this.logger.warn('OPENAI_API_KEY not configured - AI features will use fallback');
+      this.logger.warn(
+        'OPENAI_API_KEY not configured - AI features will use fallback',
+      );
     }
   }
 
@@ -106,7 +108,9 @@ Write a constructive, encouraging 2-3 sentence comment.`;
   }
 
   private generateFallbackComment(context: StudentReportContext): string {
-    const rankPercentile = ((context.totalStudents - context.rank + 1) / context.totalStudents) * 100;
+    const rankPercentile =
+      ((context.totalStudents - context.rank + 1) / context.totalStudents) *
+      100;
 
     let performancePhrase: string;
     if (rankPercentile >= 90) {
@@ -125,7 +129,8 @@ Write a constructive, encouraging 2-3 sentence comment.`;
         trendPhrase = 'The improvement in grades is encouraging.';
         break;
       case 'declining':
-        trendPhrase = 'With focused effort, we expect improved results next term.';
+        trendPhrase =
+          'With focused effort, we expect improved results next term.';
         break;
       default:
         trendPhrase = 'Consistent effort has been observed.';
@@ -133,7 +138,8 @@ Write a constructive, encouraging 2-3 sentence comment.`;
 
     let attendancePhrase = '';
     if (context.attendanceRate < 80) {
-      attendancePhrase = ' Regular attendance would further support academic progress.';
+      attendancePhrase =
+        ' Regular attendance would further support academic progress.';
     }
 
     return `${context.studentName} ${performancePhrase}, with particular strength in ${context.strongestSubject}. ${trendPhrase}${attendancePhrase}`;

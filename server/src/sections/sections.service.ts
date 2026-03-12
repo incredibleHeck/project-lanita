@@ -13,7 +13,9 @@ export class SectionsService {
     });
 
     if (!classExists) {
-      throw new NotFoundException(`Class with ID ${createSectionDto.classId} not found`);
+      throw new NotFoundException(
+        `Class with ID ${createSectionDto.classId} not found`,
+      );
     }
 
     return this.prisma.section.create({

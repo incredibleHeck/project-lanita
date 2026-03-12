@@ -35,7 +35,9 @@ export class AuditService {
       const oldRecord = await model.findUnique({
         where: { id: entityId },
       });
-      request['auditOldValues'] = oldRecord ? JSON.parse(JSON.stringify(oldRecord)) : null;
+      request['auditOldValues'] = oldRecord
+        ? JSON.parse(JSON.stringify(oldRecord))
+        : null;
     } catch {
       request['auditOldValues'] = null;
     }

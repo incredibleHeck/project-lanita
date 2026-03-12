@@ -26,11 +26,14 @@ export class WhatsAppService {
     private config: ConfigService,
     private http: HttpService,
   ) {
-    this.phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID') || '';
+    this.phoneNumberId =
+      this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID') || '';
     this.accessToken = this.config.get<string>('WHATSAPP_ACCESS_TOKEN') || '';
     this.isConfigured = !!(this.phoneNumberId && this.accessToken);
     if (!this.isConfigured) {
-      this.logger.warn('WhatsApp API not configured - notifications will be logged only');
+      this.logger.warn(
+        'WhatsApp API not configured - notifications will be logged only',
+      );
     }
   }
 
@@ -41,7 +44,9 @@ export class WhatsAppService {
     components: TemplateComponent[] = [],
   ): Promise<WhatsAppResponse> {
     if (!this.isConfigured) {
-      this.logger.log(`[Demo] Would send WhatsApp template "${templateName}" to ${to}`);
+      this.logger.log(
+        `[Demo] Would send WhatsApp template "${templateName}" to ${to}`,
+      );
       return { success: true, messageId: `demo-${Date.now()}` };
     }
 
@@ -74,7 +79,9 @@ export class WhatsAppService {
       };
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.error?.message || error.message || 'Unknown error';
+        error.response?.data?.error?.message ||
+        error.message ||
+        'Unknown error';
       this.logger.error(`WhatsApp send failed: ${errorMessage}`);
       return {
         success: false,

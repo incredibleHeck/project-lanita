@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
@@ -80,7 +76,7 @@ export class AuthService {
 
     // Create User and Profile in transaction
     const newUser = await this.prisma.$transaction(async (tx) => {
-      const user = await (tx as any).user.create({
+      const user = await tx.user.create({
         data: {
           ...(schoolId && { schoolId }),
           email: dto.email,
@@ -105,7 +101,11 @@ export class AuthService {
       return user;
     });
 
-    const tokens = await this.getTokens(newUser.id, newUser.email, newUser.role);
+    const tokens = await this.getTokens(
+      newUser.id,
+      newUser.email,
+      newUser.role,
+    );
     await this.updateRefreshToken(newUser.id, tokens.refreshToken);
     return tokens;
   }

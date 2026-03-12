@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  ForbiddenException,
+  Request,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AllocationsService } from './allocations.service';
 import { CreateAllocationDto } from './dto/create-allocation.dto';
@@ -23,13 +32,13 @@ export class AllocationsController {
   @Get('teacher/:teacherId')
   async findByTeacher(@Param('teacherId') teacherId: string, @Request() req) {
     const user = req.user;
-    
+
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
       return this.allocationsService.findAllByTeacher(teacherId);
     }
 
     if (user.sub === teacherId || user.id === teacherId) {
-       return this.allocationsService.findAllByTeacher(teacherId);
+      return this.allocationsService.findAllByTeacher(teacherId);
     }
 
     throw new ForbiddenException('You can only view your own schedule');

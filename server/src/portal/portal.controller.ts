@@ -1,4 +1,11 @@
-import { Controller, Get, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  UseGuards,
+  Request,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -20,8 +27,16 @@ export class PortalController {
   }
 
   @Get('student/:studentId/summary')
-  @Roles(UserRole.STUDENT, UserRole.PARENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async getStudentSummary(@Param('studentId') studentId: string, @Request() req) {
+  @Roles(
+    UserRole.STUDENT,
+    UserRole.PARENT,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+  )
+  async getStudentSummary(
+    @Param('studentId') studentId: string,
+    @Request() req,
+  ) {
     const user = req.user;
 
     if (user.role === UserRole.STUDENT) {
@@ -31,9 +46,14 @@ export class PortalController {
     }
 
     if (user.role === UserRole.PARENT) {
-      const hasAccess = await this.portalService.verifyParentAccess(user.sub, studentId);
+      const hasAccess = await this.portalService.verifyParentAccess(
+        user.sub,
+        studentId,
+      );
       if (!hasAccess) {
-        throw new ForbiddenException('You can only view your children\'s dashboard');
+        throw new ForbiddenException(
+          "You can only view your children's dashboard",
+        );
       }
     }
 

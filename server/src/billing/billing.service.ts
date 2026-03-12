@@ -1,11 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { InitializePaystackDto } from './dto/initialize-paystack.dto';
 import { PaystackService } from './paystack.service';
-import { InvoiceStatus, PaymentTransactionStatus, Prisma } from '@prisma/client';
+import {
+  InvoiceStatus,
+  PaymentTransactionStatus,
+  Prisma,
+} from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -60,7 +69,9 @@ export class BillingService {
     });
 
     if (feeStructures.length === 0) {
-      throw new BadRequestException('No fee structures found for this academic year');
+      throw new BadRequestException(
+        'No fee structures found for this academic year',
+      );
     }
 
     const studentWhere: { currentSection?: { classId: string } } = {};
@@ -77,7 +88,9 @@ export class BillingService {
     });
 
     if (students.length === 0) {
-      throw new BadRequestException('No students found for the specified criteria');
+      throw new BadRequestException(
+        'No students found for the specified criteria',
+      );
     }
 
     const invoices: Prisma.StudentInvoiceCreateManyInput[] = [];
@@ -98,7 +111,9 @@ export class BillingService {
       }
 
       const applicableFees = feeStructures.filter(
-        (fee) => fee.classId === null || fee.classId === student.currentSection.classId,
+        (fee) =>
+          fee.classId === null ||
+          fee.classId === student.currentSection.classId,
       );
 
       const totalAmount = applicableFees.reduce(
@@ -118,7 +133,10 @@ export class BillingService {
     }
 
     if (invoices.length === 0) {
-      return { message: 'All students already have invoices for this term', created: 0 };
+      return {
+        message: 'All students already have invoices for this term',
+        created: 0,
+      };
     }
 
     await this.prisma.studentInvoice.createMany({
@@ -416,7 +434,10 @@ export class BillingService {
     });
   }
 
-  async verifyParentAccess(parentUserId: string, studentRecordId: string): Promise<boolean> {
+  async verifyParentAccess(
+    parentUserId: string,
+    studentRecordId: string,
+  ): Promise<boolean> {
     const studentRecord = await this.prisma.studentRecord.findUnique({
       where: { id: studentRecordId },
     });
@@ -428,7 +449,10 @@ export class BillingService {
     return studentRecord.parentId === parentUserId;
   }
 
-  async verifyStudentAccess(studentUserId: string, studentRecordId: string): Promise<boolean> {
+  async verifyStudentAccess(
+    studentUserId: string,
+    studentRecordId: string,
+  ): Promise<boolean> {
     const studentRecord = await this.prisma.studentRecord.findUnique({
       where: { id: studentRecordId },
     });
@@ -440,7 +464,10 @@ export class BillingService {
     return studentRecord.userId === studentUserId;
   }
 
-  async initializePaystackPayment(dto: InitializePaystackDto, parentUserId: string) {
+  async initializePaystackPayment(
+    dto: InitializePaystackDto,
+    parentUserId: string,
+  ) {
     const invoice = await this.prisma.studentInvoice.findFirst({
       where: { id: dto.invoiceId },
       include: {
@@ -452,9 +479,14 @@ export class BillingService {
       throw new NotFoundException('Invoice not found');
     }
 
-    const hasAccess = await this.verifyParentAccess(parentUserId, invoice.studentId);
+    const hasAccess = await this.verifyParentAccess(
+      parentUserId,
+      invoice.studentId,
+    );
     if (!hasAccess) {
-      throw new ForbiddenException('You can only pay for your children\'s invoices');
+      throw new ForbiddenException(
+        "You can only pay for your children's invoices",
+      );
     }
 
     if (invoice.status === InvoiceStatus.PAID) {
@@ -469,7 +501,9 @@ export class BillingService {
 
     const parent = invoice.student.parent;
     if (!parent?.email) {
-      throw new BadRequestException('Parent email is required for online payment');
+      throw new BadRequestException(
+        'Parent email is required for online payment',
+      );
     }
 
     const reference = randomUUID();
@@ -510,7 +544,10 @@ export class BillingService {
     });
   }
 
-  async processChargeSuccess(reference: string, channel: string): Promise<void> {
+  async processChargeSuccess(
+    reference: string,
+    channel: string,
+  ): Promise<void> {
     const transaction = await this.prisma.paymentTransaction.findUnique({
       where: { reference },
       include: { invoice: true },
@@ -532,10 +569,9 @@ export class BillingService {
 
       const invoice = transaction.invoice;
       const newAmountPaid = invoice.amountPaid.add(transaction.amount);
-      const newStatus =
-        newAmountPaid.greaterThanOrEqualTo(invoice.totalAmount)
-          ? InvoiceStatus.PAID
-          : InvoiceStatus.PARTIAL;
+      const newStatus = newAmountPaid.greaterThanOrEqualTo(invoice.totalAmount)
+        ? InvoiceStatus.PAID
+        : InvoiceStatus.PARTIAL;
 
       await tx.studentInvoice.update({
         where: { id: invoice.id },

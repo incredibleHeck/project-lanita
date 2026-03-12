@@ -58,14 +58,18 @@ export class AcademicYearService {
     if (updateAcademicYearDto.isCurrent === true) {
       return this.setActive(id);
     }
-    
+
     // Standard update
     return this.prisma.academicYear.update({
       where: { id },
       data: {
         ...updateAcademicYearDto,
-        startDate: updateAcademicYearDto.startDate ? new Date(updateAcademicYearDto.startDate) : undefined,
-        endDate: updateAcademicYearDto.endDate ? new Date(updateAcademicYearDto.endDate) : undefined,
+        startDate: updateAcademicYearDto.startDate
+          ? new Date(updateAcademicYearDto.startDate)
+          : undefined,
+        endDate: updateAcademicYearDto.endDate
+          ? new Date(updateAcademicYearDto.endDate)
+          : undefined,
       },
     });
   }

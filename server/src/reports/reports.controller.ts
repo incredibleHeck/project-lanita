@@ -27,7 +27,13 @@ export class ReportsController {
   ) {}
 
   @Get('student/:studentId')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.PARENT, UserRole.STUDENT)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.TEACHER,
+    UserRole.PARENT,
+    UserRole.STUDENT,
+  )
   async generateStudentReport(
     @Param('studentId') studentId: string,
     @Query('examId') examId: string,

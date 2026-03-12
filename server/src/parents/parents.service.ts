@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParentDto } from './dto/create-parent.dto';
 import * as argon2 from 'argon2';
@@ -44,7 +49,9 @@ export class ParentsService {
           });
 
           if (!studentRecord) {
-            throw new NotFoundException(`Student with Admission Number ${admissionNumber} not found`);
+            throw new NotFoundException(
+              `Student with Admission Number ${admissionNumber} not found`,
+            );
           }
 
           // Link the student to this parent
@@ -74,16 +81,17 @@ export class ParentsService {
       where: { role: UserRole.PARENT },
       include: {
         profile: true,
-        children: { // Relation defined in User model (children StudentRecord[])
-            include: {
-                user: {
-                    include: {
-                        profile: true
-                    }
-                }
-            }
-        }
-      }
+        children: {
+          // Relation defined in User model (children StudentRecord[])
+          include: {
+            user: {
+              include: {
+                profile: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 }

@@ -86,11 +86,7 @@ export class NotificationService {
     });
   }
 
-  async sendFeeOverdue(
-    parentId: string,
-    studentName: string,
-    amount: number,
-  ) {
+  async sendFeeOverdue(parentId: string, studentName: string, amount: number) {
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -148,7 +144,11 @@ export class NotificationService {
     });
   }
 
-  async sendAnnouncement(recipientId: string, schoolName: string, content: string) {
+  async sendAnnouncement(
+    recipientId: string,
+    schoolName: string,
+    content: string,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: recipientId },
       include: { profile: true },

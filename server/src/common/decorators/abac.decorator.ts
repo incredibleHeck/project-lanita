@@ -11,4 +11,7 @@ export interface ABACRule {
 }
 
 export const ABAC = (...rules: ABACRuleType[]) =>
-  SetMetadata('abac', rules.map((type) => ({ type })));
+  SetMetadata(
+    'abac',
+    rules.map((type) => ({ type })),
+  );

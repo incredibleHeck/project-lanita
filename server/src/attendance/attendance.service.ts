@@ -14,7 +14,8 @@ export class AttendanceService {
   ) {}
 
   async markRegister(createAttendanceBatchDto: CreateAttendanceBatchDto) {
-    const { subjectAllocationId, date, records, offlineTimestamp } = createAttendanceBatchDto;
+    const { subjectAllocationId, date, records, offlineTimestamp } =
+      createAttendanceBatchDto;
 
     const allocation = await this.prisma.subjectAllocation.findUnique({
       where: { id: subjectAllocationId },
@@ -40,13 +41,17 @@ export class AttendanceService {
 
         if (existingRecord && offlineTimestamp) {
           const serverTimestamp = existingRecord.updatedAt.getTime();
-          
+
           if (offlineTimestamp <= serverTimestamp) {
             this.logger.debug(
               `Skipping update for student ${record.studentId}: server record is newer ` +
-              `(offline: ${offlineTimestamp}, server: ${serverTimestamp})`,
+                `(offline: ${offlineTimestamp}, server: ${serverTimestamp})`,
             );
-            return { studentId: record.studentId, action: 'skipped', reason: 'server_newer' };
+            return {
+              studentId: record.studentId,
+              action: 'skipped',
+              reason: 'server_newer',
+            };
           }
         }
 
@@ -92,7 +97,8 @@ export class AttendanceService {
             },
           });
           if (student?.parent) {
-            const studentName = `${student.user.profile?.firstName || ''} ${student.user.profile?.lastName || ''}`.trim();
+            const studentName =
+              `${student.user.profile?.firstName || ''} ${student.user.profile?.lastName || ''}`.trim();
             await this.notificationService.sendAttendanceAlert(
               student.parent.id,
               studentName || 'Your child',
@@ -116,7 +122,7 @@ export class AttendanceService {
 
   async getAttendanceForDate(allocationId: string, date: string) {
     const attendanceDate = new Date(date);
-    
+
     const records = await this.prisma.attendanceRecord.findMany({
       where: {
         allocationId,
@@ -141,7 +147,8 @@ export class AttendanceService {
         studentId: r.studentId,
         status: r.status,
         remarks: r.remarks,
-        studentName: `${r.student.user.profile?.firstName || ''} ${r.student.user.profile?.lastName || ''}`.trim(),
+        studentName:
+          `${r.student.user.profile?.firstName || ''} ${r.student.user.profile?.lastName || ''}`.trim(),
         admissionNumber: r.student.admissionNumber,
       })),
     };
@@ -194,10 +201,18 @@ export class AttendanceService {
     // When studentId is provided, return aggregated stats and records
     if (studentId) {
       const total = records.length;
-      const present = records.filter((r) => r.status === AttendanceStatus.PRESENT).length;
-      const absent = records.filter((r) => r.status === AttendanceStatus.ABSENT).length;
-      const late = records.filter((r) => r.status === AttendanceStatus.LATE).length;
-      const excused = records.filter((r) => r.status === AttendanceStatus.EXCUSED).length;
+      const present = records.filter(
+        (r) => r.status === AttendanceStatus.PRESENT,
+      ).length;
+      const absent = records.filter(
+        (r) => r.status === AttendanceStatus.ABSENT,
+      ).length;
+      const late = records.filter(
+        (r) => r.status === AttendanceStatus.LATE,
+      ).length;
+      const excused = records.filter(
+        (r) => r.status === AttendanceStatus.EXCUSED,
+      ).length;
       return {
         total,
         present,

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, GraduationCap, Eye } from "lucide-react";
+import { Users, AlertCircle, GraduationCap, Eye, FileText } from "lucide-react";
 import Link from "next/link";
 
 interface Child {
@@ -121,12 +121,20 @@ function ParentDashboardContent() {
                     </Badge>
                   </div>
                 </div>
-                <Link href={`/parent/child/${child.user.id}`} className="mt-4">
-                  <Button className="w-full" variant="outline">
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Details
-                  </Button>
-                </Link>
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <Link href={`/parent/child/${child.user.id}`} className="flex-1">
+                    <Button className="w-full" variant="outline">
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Details
+                    </Button>
+                  </Link>
+                  <Link href={`/parent/child/${child.user.id}/report`} className="flex-1">
+                    <Button className="w-full" variant="outline">
+                      <FileText className="mr-2 h-4 w-4" />
+                      View Report
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}

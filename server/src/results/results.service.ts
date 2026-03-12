@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateResultDto } from './dto/create-result.dto';
 import { Prisma } from '@prisma/client';
@@ -25,7 +30,9 @@ export class ResultsService {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException('Result already exists for this student, exam, and subject');
+          throw new ConflictException(
+            'Result already exists for this student, exam, and subject',
+          );
         }
       }
       throw error;
@@ -37,11 +44,11 @@ export class ResultsService {
       where: filters,
       include: {
         student: {
-            include: { user: { include: { profile: true } } }
+          include: { user: { include: { profile: true } } },
         },
         exam: true,
-        subject: true
-      }
+        subject: true,
+      },
     });
   }
 
@@ -51,8 +58,8 @@ export class ResultsService {
       include: {
         student: true,
         exam: true,
-        subject: true
-      }
+        subject: true,
+      },
     });
   }
 
@@ -84,7 +91,9 @@ export class ResultsService {
     // Validate Scores against Max Score
     for (const record of scores) {
       if (record.score > exam.maxScore) {
-        throw new BadRequestException(`Score ${record.score} exceeds exam max score of ${exam.maxScore}`);
+        throw new BadRequestException(
+          `Score ${record.score} exceeds exam max score of ${exam.maxScore}`,
+        );
       }
     }
 
@@ -114,7 +123,7 @@ export class ResultsService {
             remarks: record.remarks,
           },
         });
-      })
+      }),
     );
 
     return { message: 'Results recorded successfully' };
@@ -131,8 +140,8 @@ export class ResultsService {
         subject: true,
       },
       orderBy: {
-        exam: { startDate: 'desc' }
-      }
+        exam: { startDate: 'desc' },
+      },
     });
 
     // Group by Exam
@@ -141,8 +150,8 @@ export class ResultsService {
       const examName = result.exam.name;
       if (!grouped[examName]) {
         grouped[examName] = {
-            exam: result.exam,
-            results: []
+          exam: result.exam,
+          results: [],
         };
       }
       grouped[examName].results.push({

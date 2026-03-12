@@ -66,21 +66,39 @@ export class BillingController {
   }
 
   @Get('statement/:studentId')
-  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  async getStudentStatement(@Param('studentId') studentId: string, @Request() req) {
+  @Roles(
+    UserRole.PARENT,
+    UserRole.STUDENT,
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+  )
+  async getStudentStatement(
+    @Param('studentId') studentId: string,
+    @Request() req,
+  ) {
     const user = req.user;
 
     if (user.role === UserRole.PARENT) {
-      const hasAccess = await this.billingService.verifyParentAccess(user.sub, studentId);
+      const hasAccess = await this.billingService.verifyParentAccess(
+        user.sub,
+        studentId,
+      );
       if (!hasAccess) {
-        throw new ForbiddenException('You can only view your children\'s financial statements');
+        throw new ForbiddenException(
+          "You can only view your children's financial statements",
+        );
       }
     }
 
     if (user.role === UserRole.STUDENT) {
-      const hasAccess = await this.billingService.verifyStudentAccess(user.sub, studentId);
+      const hasAccess = await this.billingService.verifyStudentAccess(
+        user.sub,
+        studentId,
+      );
       if (!hasAccess) {
-        throw new ForbiddenException('You can only view your own financial statement');
+        throw new ForbiddenException(
+          'You can only view your own financial statement',
+        );
       }
     }
 

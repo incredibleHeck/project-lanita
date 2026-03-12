@@ -1,4 +1,9 @@
-import { Injectable, Logger, InternalServerErrorException, BadGatewayException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+  BadGatewayException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -40,7 +45,9 @@ export class PaystackService {
 
     if (!secretKey) {
       this.logger.error('PAYSTACK_SECRET_KEY is not configured');
-      throw new InternalServerErrorException('Payment provider is not configured');
+      throw new InternalServerErrorException(
+        'Payment provider is not configured',
+      );
     }
 
     const url = 'https://api.paystack.co/transaction/initialize';
@@ -80,9 +87,11 @@ export class PaystackService {
         error?.message ||
         'Error initializing payment with Paystack';
 
-      this.logger.error(`Error calling Paystack initialize endpoint: ${message}`, error?.stack);
+      this.logger.error(
+        `Error calling Paystack initialize endpoint: ${message}`,
+        error?.stack,
+      );
       throw new BadGatewayException('Error initializing payment with Paystack');
     }
   }
 }
-

@@ -42,7 +42,9 @@ export class AuditInterceptor implements NestInterceptor {
         const schoolId = getTenantSchoolId() || request['schoolId'];
         if (!schoolId) return;
 
-        const reqMetadata = request['auditMetadata'] as { entityId?: string } | undefined;
+        const reqMetadata = request['auditMetadata'] as
+          | { entityId?: string }
+          | undefined;
         const entityId =
           reqMetadata?.entityId ||
           request.params?.['id'] ||
@@ -63,7 +65,9 @@ export class AuditInterceptor implements NestInterceptor {
               entityType: metadata.entityType,
               entityId,
               oldValues: oldValues ?? undefined,
-              newValues: response ? JSON.parse(JSON.stringify(response)) : undefined,
+              newValues: response
+                ? JSON.parse(JSON.stringify(response))
+                : undefined,
               ipAddress: request.ip,
               userAgent: request.headers?.['user-agent'],
             },

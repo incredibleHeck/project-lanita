@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserEntity } from '../common/entities/user.entity';
 import { UserRole } from '@prisma/client';
@@ -18,7 +22,12 @@ export class TeachersService {
     const whereClause: {
       role: UserRole;
       isActive: boolean;
-      OR?: Array<{ profile: { firstName?: { contains: string; mode: 'insensitive' }; lastName?: { contains: string; mode: 'insensitive' } } }>;
+      OR?: Array<{
+        profile: {
+          firstName?: { contains: string; mode: 'insensitive' };
+          lastName?: { contains: string; mode: 'insensitive' };
+        };
+      }>;
     } = {
       role: UserRole.TEACHER,
       isActive: true,
@@ -168,10 +177,12 @@ export class TeachersService {
       const profileUpdate: Record<string, unknown> = {};
       if (dto.firstName !== undefined) profileUpdate.firstName = dto.firstName;
       if (dto.lastName !== undefined) profileUpdate.lastName = dto.lastName;
-      if (dto.middleName !== undefined) profileUpdate.middleName = dto.middleName;
+      if (dto.middleName !== undefined)
+        profileUpdate.middleName = dto.middleName;
       if (dto.dob !== undefined) profileUpdate.dob = new Date(dto.dob);
       if (dto.gender !== undefined) profileUpdate.gender = dto.gender;
-      if (dto.contactNumber !== undefined) profileUpdate.contactNumber = dto.contactNumber;
+      if (dto.contactNumber !== undefined)
+        profileUpdate.contactNumber = dto.contactNumber;
       if (dto.address !== undefined) profileUpdate.address = dto.address;
       if (dto.avatarUrl !== undefined) profileUpdate.avatarUrl = dto.avatarUrl;
 

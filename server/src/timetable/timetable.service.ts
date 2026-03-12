@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../prisma/prisma.service';
@@ -50,23 +56,26 @@ export class TimetableService {
       throw new NotFoundException('Academic year not found');
     }
 
-    const [sections, subjects, teachers, rooms, allocations] = await Promise.all([
-      this.prisma.section.findMany({
-        include: { class: true },
-      }),
-      this.prisma.subject.findMany(),
-      this.prisma.user.findMany({
-        where: { role: 'TEACHER', isActive: true },
-        include: { profile: true },
-      }),
-      this.prisma.room.findMany(),
-      this.prisma.subjectAllocation.findMany({
-        where: { academicYearId: dto.academicYearId },
-      }),
-    ]);
+    const [sections, subjects, teachers, rooms, allocations] =
+      await Promise.all([
+        this.prisma.section.findMany({
+          include: { class: true },
+        }),
+        this.prisma.subject.findMany(),
+        this.prisma.user.findMany({
+          where: { role: 'TEACHER', isActive: true },
+          include: { profile: true },
+        }),
+        this.prisma.room.findMany(),
+        this.prisma.subjectAllocation.findMany({
+          where: { academicYearId: dto.academicYearId },
+        }),
+      ]);
 
     if (allocations.length === 0) {
-      throw new BadRequestException('No subject allocations found for this academic year');
+      throw new BadRequestException(
+        'No subject allocations found for this academic year',
+      );
     }
 
     const requestBody = {
@@ -85,7 +94,9 @@ export class TimetableService {
       })),
       teachers: teachers.map((t) => ({
         id: t.id,
-        name: t.profile ? `${t.profile.firstName} ${t.profile.lastName}` : t.email,
+        name: t.profile
+          ? `${t.profile.firstName} ${t.profile.lastName}`
+          : t.email,
         max_periods_per_day: 6,
         unavailable_slots: [],
       })),
@@ -224,7 +235,10 @@ export class TimetableService {
       7: { start: '13:50', end: '14:35' },
       8: { start: '14:40', end: '15:25' },
     };
-    const times = periodTimes[newPeriod] ?? { start: slot.startTime, end: slot.endTime };
+    const times = periodTimes[newPeriod] ?? {
+      start: slot.startTime,
+      end: slot.endTime,
+    };
 
     return this.prisma.timetableSlot.update({
       where: { id },
@@ -256,7 +270,13 @@ export class TimetableService {
     });
   }
 
-  async createRoom(data: { name: string; capacity: number; type: RoomType; building?: string; floor?: number }) {
+  async createRoom(data: {
+    name: string;
+    capacity: number;
+    type: RoomType;
+    building?: string;
+    floor?: number;
+  }) {
     return this.prisma.room.create({ data });
   }
 
@@ -266,7 +286,16 @@ export class TimetableService {
     });
   }
 
-  async updateRoom(id: string, data: Partial<{ name: string; capacity: number; type: RoomType; building: string; floor: number }>) {
+  async updateRoom(
+    id: string,
+    data: Partial<{
+      name: string;
+      capacity: number;
+      type: RoomType;
+      building: string;
+      floor: number;
+    }>,
+  ) {
     return this.prisma.room.update({
       where: { id },
       data,

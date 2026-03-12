@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -70,7 +75,9 @@ export class StudentsService {
             gender: createStudentDto.gender,
             contactNumber: createStudentDto.contactNumber,
             address: createStudentDto.address,
-            ...(createStudentDto.avatarUrl && { avatarUrl: createStudentDto.avatarUrl }),
+            ...(createStudentDto.avatarUrl && {
+              avatarUrl: createStudentDto.avatarUrl,
+            }),
           },
         });
 
@@ -89,14 +96,13 @@ export class StudentsService {
 
         return user;
       });
-      
-      return this.findOne(user.id);
 
+      return this.findOne(user.id);
     } catch (error) {
-       if (error.code === 'P2002') {
-           throw new ConflictException('Email already exists');
-       }
-       throw new InternalServerErrorException('Failed to create student');
+      if (error.code === 'P2002') {
+        throw new ConflictException('Email already exists');
+      }
+      throw new InternalServerErrorException('Failed to create student');
     }
   }
 
@@ -232,10 +238,12 @@ export class StudentsService {
       const profileUpdate: Record<string, unknown> = {};
       if (dto.firstName !== undefined) profileUpdate.firstName = dto.firstName;
       if (dto.lastName !== undefined) profileUpdate.lastName = dto.lastName;
-      if (dto.middleName !== undefined) profileUpdate.middleName = dto.middleName;
+      if (dto.middleName !== undefined)
+        profileUpdate.middleName = dto.middleName;
       if (dto.dob !== undefined) profileUpdate.dob = new Date(dto.dob);
       if (dto.gender !== undefined) profileUpdate.gender = dto.gender;
-      if (dto.contactNumber !== undefined) profileUpdate.contactNumber = dto.contactNumber;
+      if (dto.contactNumber !== undefined)
+        profileUpdate.contactNumber = dto.contactNumber;
       if (dto.address !== undefined) profileUpdate.address = dto.address;
       if (dto.avatarUrl !== undefined) profileUpdate.avatarUrl = dto.avatarUrl;
 
@@ -268,7 +276,7 @@ export class StudentsService {
     }
 
     // Find Student Record via User ID (assuming studentUserId is User ID)
-    // Or is it StudentRecord ID? 
+    // Or is it StudentRecord ID?
     // "GET /students/:id" usually refers to User ID in this context as findAll returns Users.
     // I'll assume User ID.
     const studentRecord = await this.prisma.studentRecord.findUnique({
@@ -285,8 +293,8 @@ export class StudentsService {
         currentSectionId: sectionId,
       },
       include: {
-        currentSection: true
-      }
+        currentSection: true,
+      },
     });
   }
 }

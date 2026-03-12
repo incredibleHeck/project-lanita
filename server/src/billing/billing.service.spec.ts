@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -103,12 +100,12 @@ describe('BillingService', () => {
         amountPaid: new Prisma.Decimal(800),
         status: 'PARTIAL',
       });
-      (prisma.payment.create as jest.Mock).mockResolvedValue({
+      prisma.payment.create.mockResolvedValue({
         id: 'pay-1',
         amount: 200,
         receiptNumber: 'RCP-001',
       });
-      (prisma.studentInvoice.update as jest.Mock).mockResolvedValue({
+      prisma.studentInvoice.update.mockResolvedValue({
         id: 'inv-1',
         amountPaid: new Prisma.Decimal(1000),
         status: 'PAID',

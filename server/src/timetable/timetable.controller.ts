@@ -53,12 +53,20 @@ export class TimetableController {
   }
 
   @Get('section/:sectionId')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.STUDENT)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.TEACHER,
+    UserRole.STUDENT,
+  )
   getSectionTimetable(
     @Param('sectionId') sectionId: string,
     @Query('academicYearId') academicYearId: string,
   ) {
-    return this.timetableService.getTimetableBySection(sectionId, academicYearId);
+    return this.timetableService.getTimetableBySection(
+      sectionId,
+      academicYearId,
+    );
   }
 
   @Get('teacher/:teacherId')
@@ -67,7 +75,10 @@ export class TimetableController {
     @Param('teacherId') teacherId: string,
     @Query('academicYearId') academicYearId: string,
   ) {
-    return this.timetableService.getTimetableByTeacher(teacherId, academicYearId);
+    return this.timetableService.getTimetableByTeacher(
+      teacherId,
+      academicYearId,
+    );
   }
 
   @Get('rooms')
@@ -79,7 +90,14 @@ export class TimetableController {
   @Post('rooms')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   createRoom(
-    @Body() body: { name: string; capacity: number; type: RoomType; building?: string; floor?: number },
+    @Body()
+    body: {
+      name: string;
+      capacity: number;
+      type: RoomType;
+      building?: string;
+      floor?: number;
+    },
   ) {
     return this.timetableService.createRoom(body);
   }
@@ -88,7 +106,14 @@ export class TimetableController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   updateRoom(
     @Param('id') id: string,
-    @Body() body: Partial<{ name: string; capacity: number; type: RoomType; building: string; floor: number }>,
+    @Body()
+    body: Partial<{
+      name: string;
+      capacity: number;
+      type: RoomType;
+      building: string;
+      floor: number;
+    }>,
   ) {
     return this.timetableService.updateRoom(id, body);
   }

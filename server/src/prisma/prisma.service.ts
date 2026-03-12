@@ -4,7 +4,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { tenantExtension } from './prisma-tenant.extension';
 
-export type ExtendedPrismaClient = PrismaClient & ReturnType<typeof tenantExtension>;
+export type ExtendedPrismaClient = PrismaClient &
+  ReturnType<typeof tenantExtension>;
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
