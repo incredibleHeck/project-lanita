@@ -32,10 +32,8 @@ export class AuthService {
       role,
     };
 
-    const accessSecret =
-      this.config.get<string>('JWT_ACCESS_SECRET') || 'fallback-secret';
-    const refreshSecret =
-      this.config.get<string>('JWT_REFRESH_SECRET') || 'fallback-refresh-secret';
+    const accessSecret = this.config.get<string>('JWT_ACCESS_SECRET');
+    const refreshSecret = this.config.get<string>('JWT_REFRESH_SECRET');
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: accessSecret,

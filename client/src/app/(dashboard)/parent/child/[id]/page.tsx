@@ -17,6 +17,7 @@ import {
   CalendarCheck,
   Wallet,
   BookOpen,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
@@ -225,6 +226,24 @@ function ChildDetailContent() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Report Card
+          </CardTitle>
+          <CardDescription>View, print, or download your child&apos;s report card</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href={`/parent/child/${studentUserId}/report`}>
+            <Button className="w-full sm:w-auto">
+              <FileText className="mr-2 h-4 w-4" />
+              View Report
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

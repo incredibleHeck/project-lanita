@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Printer, FileText } from "lucide-react";
+import { Printer, FileText, Download, ArrowLeft } from "lucide-react";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RoleGuard } from "@/components/role-guard";
 import { ReportCard, type ReportCardData } from "@/components/reports/report-card";
+import Link from "next/link";
 
 interface Exam {
   id: string;
@@ -24,9 +26,17 @@ interface Exam {
   endDate: string;
 }
 
-export default function ReportCardPage() {
+export default function ParentReportPage() {
+  return (
+    <RoleGuard allowedRoles={["PARENT"]}>
+      <ParentReportContent />
+    </RoleGuard>
+  );
+}
+
+function ParentReportContent() {
   const params = useParams();
-  const studentId = params.studentId as string;
+  const studentUserId = params.id as string;
   const [selectedExamId, setSelectedExamId] = useState<string>("");
 
   const { data: exams, isLoading: examsLoading } = useQuery<Exam[]>({
@@ -37,14 +47,27 @@ export default function ReportCardPage() {
     },
   });
 
+  const { data: summary } = useQuery({
+    queryKey: ["student", "summary", studentUserId],
+    queryFn: async () => {
+      const res = await api.get(`/portal/student/${studentUserId}/summary`);
+      return res.data as { firstName: string; lastName: string };
+    },
+    enabled: !!studentUserId,
+  });
+
+  const childName = summary
+    ? `${summary.firstName} ${summary.lastName}`.trim() || "Child"
+    : "Child";
+
   const {
     data: report,
     isLoading: reportLoading,
     error: reportError,
   } = useQuery<ReportCardData>({
-    queryKey: ["report", studentId, selectedExamId],
+    queryKey: ["report", "parent", studentUserId, selectedExamId],
     queryFn: async () => {
-      const res = await api.get(`/reports/student/${studentId}`, {
+      const res = await api.get(`/reports/student/${studentUserId}`, {
         params: { examId: selectedExamId },
       });
       return res.data;
@@ -56,9 +79,13 @@ export default function ReportCardPage() {
     window.print();
   };
 
+  const handleDownload = () => {
+    window.print();
+  };
+
   if (examsLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-[800px] max-w-4xl mx-auto" />
       </div>
@@ -66,10 +93,23 @@ export default function ReportCardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between print:hidden">
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Report Card</h1>
+          <Link href={`/parent/child/${studentUserId}`}>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to {childName}
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold">Report Card</h1>
+            <p className="text-sm text-muted-foreground">
+              View and download your child&apos;s report
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
             <SelectTrigger className="w-[250px]">
               <SelectValue placeholder="Select an exam" />
@@ -82,19 +122,31 @@ export default function ReportCardPage() {
               ))}
             </SelectContent>
           </Select>
+          {report && (
+            <>
+              <Button onClick={handlePrint} variant="outline">
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+              <Button onClick={handleDownload} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            </>
+          )}
         </div>
-        {report && (
-          <Button onClick={handlePrint} variant="outline">
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-        )}
       </div>
 
       {!selectedExamId && (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <FileText className="h-16 w-16 mb-4" />
           <p className="text-lg">Select an exam to view the report card</p>
+          <Link href={`/parent/child/${studentUserId}`} className="mt-4">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to {childName}
+            </Button>
+          </Link>
         </div>
       )}
 
@@ -111,6 +163,12 @@ export default function ReportCardPage() {
       {reportError && (
         <div className="flex flex-col items-center justify-center py-20 text-destructive">
           <p>Failed to load report card. Please try again.</p>
+          <Link href={`/parent/child/${studentUserId}`} className="mt-4">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to {childName}
+            </Button>
+          </Link>
         </div>
       )}
 

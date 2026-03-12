@@ -47,6 +47,18 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  if (nodeEnv === 'production') {
+    const accessSecret = configService.get<string>('JWT_ACCESS_SECRET');
+    const refreshSecret = configService.get<string>('JWT_REFRESH_SECRET');
+    if (!accessSecret || !refreshSecret) {
+      throw new Error(
+        'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set in production. ' +
+          'Check your environment configuration.',
+      );
+    }
+  }
+
   await app.listen(configService.get<number>('PORT', 3001));
 }
 bootstrap();
