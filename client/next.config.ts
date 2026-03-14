@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
   },
+  // Enable polling in dev so file changes are detected inside Docker (e.g. Windows hosts)
+  webpack(config, { dev }) {
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);

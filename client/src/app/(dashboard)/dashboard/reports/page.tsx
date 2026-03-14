@@ -6,6 +6,7 @@ import axios from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FileText, Search, Users } from "lucide-react";
@@ -103,12 +104,11 @@ export default function ReportsPage() {
           ))}
         </div>
       ) : students.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <Users className="h-16 w-16 mb-4" />
-          <p className="text-lg">
-            {search ? "No students found matching your search" : "Start typing to search for students"}
-          </p>
-        </div>
+        <EmptyState
+          icon={<Users />}
+          title={search ? "No students found matching your search" : "Start typing to search for students"}
+          description={search ? "Try adjusting your search criteria" : undefined}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {students.map((student) => (

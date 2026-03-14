@@ -23,6 +23,7 @@ import {
   Clock,
   FileSpreadsheet,
   Printer,
+  GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -785,17 +786,17 @@ export default function TimetablePage() {
                               />
                             ) : (
                               <div
-                                className="rounded p-2 text-sm border-l-4"
+                                className="rounded-md p-2 text-sm border-l-4 border border-border/60"
                                 style={
                                   slotColor
                                     ? {
                                         borderLeftColor: slotColor,
-                                        backgroundColor: `${slotColor}15`,
+                                        backgroundColor: `${slotColor}20`,
                                       }
                                     : { borderLeftColor: 'transparent' }
                                 }
                               >
-                                <div className="font-medium">
+                                <div className="font-medium" style={slotColor ? { color: slotColor } : undefined}>
                                   {viewMode === 'SECTION'
                                     ? getSubjectName(slot)
                                     : getSectionDisplayName(slot)}
@@ -834,21 +835,24 @@ export default function TimetablePage() {
                 <DragOverlay>
                   {activeDragSlot ? (
                     <div
-                      className="rounded p-2 text-sm shadow-lg border-l-4"
+                      className="rounded-md p-2 text-sm shadow-xl rotate-1 opacity-90 border border-border/60 flex items-start gap-2"
                       style={{
                         borderLeftColor: getSubjectColor(activeDragSlot),
-                        backgroundColor: `${getSubjectColor(activeDragSlot)}15`,
+                        backgroundColor: `${getSubjectColor(activeDragSlot)}20`,
                       }}
                     >
-                      <div className="font-medium">
-                        {viewMode === 'SECTION'
-                          ? getSubjectName(activeDragSlot)
-                          : getSectionDisplayName(activeDragSlot)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {viewMode === 'SECTION'
-                          ? getRoomName(activeDragSlot)
-                          : getSubjectName(activeDragSlot)}
+                      <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/70 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium" style={{ color: getSubjectColor(activeDragSlot) }}>
+                          {viewMode === 'SECTION'
+                            ? getSubjectName(activeDragSlot)
+                            : getSectionDisplayName(activeDragSlot)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {viewMode === 'SECTION'
+                            ? getRoomName(activeDragSlot)
+                            : getSubjectName(activeDragSlot)}
+                        </div>
                       </div>
                     </div>
                   ) : null}

@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { BookOpen, Edit2, Trash2 } from "lucide-react";
 
 interface Subject {
@@ -110,11 +111,13 @@ export default function SubjectsPage() {
             <TableBody>
               {!subjects || subjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    <div className="flex flex-col items-center gap-2">
-                      <BookOpen className="h-12 w-12 text-muted-foreground" />
-                      No subjects found. Add your first subject to get started.
-                    </div>
+                  <TableCell colSpan={7}>
+                    <EmptyState
+                      icon={<BookOpen />}
+                      title="No subjects found"
+                      description="Add your first subject to get started"
+                      variant="table"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

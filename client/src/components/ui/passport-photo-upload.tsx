@@ -48,6 +48,8 @@ interface PassportPhotoUploadProps {
   onChange: (dataUrl: string | null) => void;
   disabled?: boolean;
   className?: string;
+  /** Avatar size: "default" (24) or "lg" (28) */
+  size?: "default" | "lg";
 }
 
 export function PassportPhotoUpload({
@@ -55,7 +57,11 @@ export function PassportPhotoUpload({
   onChange,
   disabled,
   className,
+  size = "default",
 }: PassportPhotoUploadProps) {
+  const isLg = size === "lg";
+  const ringSize = isLg ? "h-28 w-28" : "h-24 w-24";
+  const avatarSize = isLg ? "h-24 w-24" : "h-20 w-20";
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -87,7 +93,8 @@ export function PassportPhotoUpload({
       <div className="flex items-center gap-4">
         <div
           className={cn(
-            "relative flex h-24 w-24 cursor-pointer items-center justify-center rounded-full border-2 border-dashed transition-colors",
+            "relative flex cursor-pointer items-center justify-center rounded-full border-2 border-dashed transition-colors",
+            ringSize,
             value
               ? "border-primary/50 bg-muted/50"
               : "border-muted-foreground/25 hover:border-muted-foreground/50",
@@ -105,7 +112,7 @@ export function PassportPhotoUpload({
           />
           {value ? (
             <>
-              <Avatar className="h-20 w-20">
+              <Avatar className={avatarSize}>
                 <AvatarImage src={value} alt="Passport photo" />
                 <AvatarFallback>?</AvatarFallback>
               </Avatar>

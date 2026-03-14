@@ -27,15 +27,17 @@ interface AttendanceChartProps {
 
 export function AttendanceChart({ data, isLoading }: AttendanceChartProps) {
   return (
-    <Card>
+    <Card className="border-border/50 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border hover:-translate-y-[2px]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-5 w-5" />
+          <span className="bg-primary/10 text-primary p-2 rounded-lg">
+            <CalendarDays className="h-5 w-5" />
+          </span>
           Weekly Attendance Overview
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
+        <div className="h-[300px] p-6 pt-0">
           {isLoading ? (
             <div className="flex flex-col justify-end h-full gap-2">
               <Skeleton className="h-full w-full" />
@@ -52,7 +54,7 @@ export function AttendanceChart({ data, isLoading }: AttendanceChartProps) {
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#6B7280"
+                  stroke="color-mix(in srgb, var(--color-border) 30%, transparent)"
                   vertical={false}
                 />
                 <XAxis
@@ -82,13 +84,13 @@ export function AttendanceChart({ data, isLoading }: AttendanceChartProps) {
                   dataKey="present"
                   name="Present"
                   fill="#4ADE80"
-                  radius={[4, 4, 0, 0]}
+                  radius={[6, 6, 0, 0]}
                 />
                 <Bar
                   dataKey="absent"
                   name="Absent"
                   fill="#F87171"
-                  radius={[4, 4, 0, 0]}
+                  radius={[6, 6, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>

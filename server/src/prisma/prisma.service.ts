@@ -75,6 +75,12 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get studentRecord() {
     return this._client.studentRecord;
   }
+  get parent() {
+    return this._client.parent;
+  }
+  get studentGuardian() {
+    return this._client.studentGuardian;
+  }
   get attendanceRecord() {
     return this._client.attendanceRecord;
   }
@@ -128,6 +134,9 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   }
   get lesson() {
     return this._client.lesson;
+  }
+  get material() {
+    return this._client.material;
   }
   get assignment() {
     return this._client.assignment;

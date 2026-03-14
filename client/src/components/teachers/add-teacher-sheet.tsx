@@ -29,6 +29,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -195,7 +196,7 @@ export function AddTeacherSheet() {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="flex flex-col sm:max-w-md overflow-y-auto"
+        className="flex flex-col sm:max-w-md"
       >
         <SheetHeader>
           <SheetTitle>Add Teacher</SheetTitle>
@@ -203,8 +204,9 @@ export function AddTeacherSheet() {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-4 px-4 pb-4"
+            className="flex flex-1 min-h-0 flex-col"
           >
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-4">
             <FormField
               control={form.control}
               name="avatarUrl"
@@ -433,21 +435,30 @@ export function AddTeacherSheet() {
             <p className="text-sm text-muted-foreground">
               Default password: Teacher@123 (teacher can change after first login)
             </p>
+            </div>
 
-            <Button
-              type="submit"
-              disabled={createTeacher.isPending}
-              className="mt-4"
-            >
-              {createTeacher.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add Teacher"
-              )}
-            </Button>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createTeacher.isPending}
+              >
+                {createTeacher.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Teacher"
+                )}
+              </Button>
+            </SheetFooter>
           </form>
         </Form>
       </SheetContent>

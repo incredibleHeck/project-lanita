@@ -115,10 +115,10 @@ export default function AnnouncementsPage() {
         </Card>
       ) : (
         <ScrollArea className="h-[calc(100vh-280px)]">
-          <div className="space-y-4 pr-4">
+          <div className="space-y-6 pr-4">
             {announcements?.map((ann) => (
-              <Card key={ann.id}>
-                <CardHeader className="pb-2">
+              <Card key={ann.id} className="overflow-hidden">
+                <CardHeader className="pb-2 pt-6 px-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -131,20 +131,22 @@ export default function AnnouncementsPage() {
                         )}
                         <Badge variant="outline">{ann.scope.replace('_', ' ')}</Badge>
                       </div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mt-2">
+                        {new Date(ann.publishAt).toLocaleDateString()}
+                      </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         By{' '}
                         {ann.author?.profile
                           ? `${ann.author.profile.firstName} ${ann.author.profile.lastName}`
-                          : 'Unknown'}{' '}
-                        • {new Date(ann.publishAt).toLocaleDateString()}
+                          : 'Unknown'}
                       </p>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-6 pb-6 pt-2">
                   <p className="text-sm whitespace-pre-wrap">{ann.content}</p>
                   {ann.expiresAt && (
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mt-4">
                       Expires: {new Date(ann.expiresAt).toLocaleDateString()}
                     </p>
                   )}

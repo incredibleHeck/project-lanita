@@ -171,6 +171,7 @@ export class AnalyticsService {
       include: {
         user: { include: { profile: true } },
         currentSection: { include: { class: true } },
+        guardians: true,
         attendance: {
           where: { date: { gte: startOfCurrentTerm, lte: currentDate } },
         },
@@ -441,9 +442,9 @@ export class AnalyticsService {
   }
 
   private calculateParentEngagement(student: {
-    parentId?: string | null;
+    guardians?: unknown[];
   }): number {
-    if (!student.parentId) return 0;
+    if (!student.guardians?.length) return 0;
     return 50;
   }
 }

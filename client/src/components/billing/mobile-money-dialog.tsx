@@ -159,7 +159,7 @@ export function MobileMoneyDialog({
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="rounded-lg border p-3 bg-muted/50">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Invoice Total:</span>

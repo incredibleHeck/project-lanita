@@ -101,13 +101,21 @@ export class AttendanceService {
         const students = await this.prisma.studentRecord.findMany({
           where: { id: { in: absentLateStudentIds } },
           include: {
-            parent: { include: { profile: true } },
+            guardians: {
+              include: {
+                parent: {
+                  include: { user: { include: { profile: true } } },
+                },
+              },
+            },
             user: { include: { profile: true } },
           },
         });
 
         for (const student of students) {
-          if (!student.parent?.profile?.contactNumber) continue;
+          const guardian = student.guardians[0];
+          const parentUser = guardian?.parent?.user;
+          if (!parentUser?.profile?.contactNumber) continue;
           try {
             const studentName =
               `${student.user.profile?.firstName || ''} ${student.user.profile?.lastName || ''}`.trim() ||
@@ -115,13 +123,13 @@ export class AttendanceService {
             const record = records.find((r) => r.studentId === student.id)!;
             await this.notificationService.sendAttendanceAlert(
               schoolId,
-              student.parent.id,
+              parentUser.id,
               studentName,
               record.status,
               attendanceDate.toISOString().split('T')[0],
               {
-                phone: student.parent.profile.contactNumber,
-                parentFirstName: student.parent.profile.firstName ?? '',
+                phone: parentUser.profile.contactNumber,
+                parentFirstName: parentUser.profile.firstName ?? '',
               },
             );
           } catch (err) {

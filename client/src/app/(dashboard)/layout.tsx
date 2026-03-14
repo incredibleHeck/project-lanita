@@ -26,7 +26,7 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -39,14 +39,14 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen">
       {/* Sidebar - hidden on mobile and when printing */}
-      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-background print:hidden">
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-border/60 bg-background print:hidden">
         <Sidebar />
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 md:pl-64 print:pl-0">
+      <div className="flex-1 md:pl-64 print:pl-0 bg-background text-foreground">
         <Header className="print:hidden" />
-        <main className="p-4 md:p-6 lg:p-8 print:p-0">
+        <main className="p-4 md:p-6 lg:p-8 print:p-0 bg-background text-foreground">
           {children}
         </main>
       </div>

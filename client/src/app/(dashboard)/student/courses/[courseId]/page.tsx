@@ -1,35 +1,28 @@
 "use client";
 
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import axios from "@/lib/axios";
+import api from "@/lib/axios";
 import { RoleGuard } from "@/components/role-guard";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { StudentSubmissionForm } from "@/components/lms/student-submission-form";
-import { format } from "date-fns";
-import { AlertCircle, BookOpen, FileQuestion } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useEffect, useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BookOpen,
+  Clipboard,
+  Link as LinkIcon,
+  Paperclip,
+  Play,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
-
-interface Profile {
-  firstName: string;
-  lastName: string;
-}
+import { format } from "date-fns";
 
 interface Lesson {
   id: string;
   title: string;
   content: string | null;
-  videoUrl: string | null;
+  videoUrl?: string | null;
   orderIndex: number;
 }
 
@@ -41,341 +34,74 @@ interface Assignment {
   maxScore: number | null;
 }
 
+interface Material {
+  id: string;
+  title: string;
+  description: string | null;
+  materialType: string;
+  resourceUrl: string | null;
+  order: number;
+}
+
 interface CourseModule {
   id: string;
   title: string;
   description: string | null;
   order: number;
   lessons: Lesson[];
+  materials: Material[];
   assignments: Assignment[];
 }
 
 interface Course {
   id: string;
   name: string;
+  code: string | null;
   description: string | null;
-  subject: { id: string; name: string };
-  teacher: { id: string; profile: Profile } | null;
+  subject: { id: string; name: string; code: string | null };
+  teacher: { id: string; profile: { firstName: string; lastName: string } } | null;
   modules: CourseModule[];
 }
 
-function getYouTubeEmbedUrl(url: string): string | null {
-  try {
-    const trimmed = url.trim();
-    const youtubeMatch =
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/.exec(
-        trimmed
-      );
-    if (youtubeMatch) {
-      return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+type ItemKind = "material" | "lesson" | "assignment";
 
-function LessonView({
-  lesson,
+function StudentMaterialItemRow({
+  type,
+  title,
+  subtitle,
+  href,
 }: {
-  lesson: { id: string; title: string; content: string | null; videoUrl: string | null };
+  type: "material" | "video" | "assignment" | "link";
+  title: string;
+  subtitle: string;
+  href: string;
 }) {
-  const embedUrl = lesson.videoUrl ? getYouTubeEmbedUrl(lesson.videoUrl) : null;
-  const isOtherVideo =
-    lesson.videoUrl && !embedUrl && /^https?:\/\//i.test(lesson.videoUrl.trim());
+  const iconConfig =
+    type === "assignment"
+      ? { bg: "bg-green-500/20", icon: Clipboard, iconColor: "text-green-600" }
+      : type === "video"
+        ? { bg: "bg-red-500/20", icon: Play, iconColor: "text-red-600" }
+        : type === "link"
+          ? { bg: "bg-green-500/20", icon: LinkIcon, iconColor: "text-green-600" }
+          : { bg: "bg-blue-500/20", icon: Paperclip, iconColor: "text-blue-600" };
+
+  const Icon = iconConfig.icon;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{lesson.title}</h1>
-      {lesson.content && (
-        <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-relaxed">
-          {lesson.content}
-        </div>
-      )}
-      {embedUrl && (
-        <div className="aspect-video w-full max-w-2xl overflow-hidden rounded-lg border bg-muted">
-          <iframe
-            src={embedUrl}
-            title={lesson.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="size-full"
-          />
-        </div>
-      )}
-      {isOtherVideo && (
-        <div className="aspect-video w-full max-w-2xl overflow-hidden rounded-lg border bg-muted">
-          <video
-            src={lesson.videoUrl!}
-            controls
-            className="size-full"
-            preload="metadata"
-          >
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AssignmentView({
-  assignment,
-}: {
-  assignment: Assignment;
-}) {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {assignment.title}
-      </h1>
-      {assignment.description && (
-        <div className="rounded-md border bg-muted/30 p-4 text-sm leading-relaxed">
-          {assignment.description}
-        </div>
-      )}
-      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-        {assignment.dueDate && (
-          <span>
-            Due: {format(new Date(assignment.dueDate), "PPP")}
-          </span>
-        )}
-        {assignment.maxScore != null && (
-          <span>Max score: {assignment.maxScore}</span>
-        )}
+    <Link
+      href={href}
+      className="flex items-center gap-4 p-3 hover:bg-muted/50 rounded-lg transition-colors group block"
+    >
+      <div
+        className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${iconConfig.bg} ${iconConfig.iconColor}`}
+      >
+        <Icon className="h-5 w-5" />
       </div>
-      <div className="border-t pt-6">
-        <h2 className="mb-4 text-lg font-medium">Submit your work</h2>
-        <StudentSubmissionForm assignmentId={assignment.id} />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{title}</p>
+        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
       </div>
-    </div>
-  );
-}
-
-function CourseContent({
-  courseId,
-  course,
-  itemParam,
-}: {
-  courseId: string;
-  course: Course;
-  itemParam: string | null;
-}) {
-  const router = useRouter();
-  const [itemType, itemId] = useMemo(() => {
-    if (!itemParam) return [null, null];
-    const parts = itemParam.split("-");
-    if (parts.length < 2) return [null, null];
-    const type = parts[0];
-    const id = parts.slice(1).join("-");
-    return [type, id] as const;
-  }, [itemParam]);
-
-  const { lesson, assignment } = useMemo(() => {
-    let lesson: Lesson | null = null;
-    let assignment: Assignment | null = null;
-    for (const mod of course.modules) {
-      if (itemType === "lesson" && itemId) {
-        const found = mod.lessons.find((l) => l.id === itemId);
-        if (found) {
-          lesson = found;
-          break;
-        }
-      }
-      if (itemType === "assignment" && itemId) {
-        const found = mod.assignments.find((a) => a.id === itemId);
-        if (found) {
-          assignment = found;
-          break;
-        }
-      }
-    }
-    return { lesson, assignment };
-  }, [course.modules, itemType, itemId]);
-
-  useEffect(() => {
-    if (itemParam || !course.modules?.length) return;
-    const firstModule = course.modules[0];
-    const firstLesson = firstModule?.lessons?.[0];
-    const firstAssignment = firstModule?.assignments?.[0];
-    const firstId = firstLesson
-      ? `lesson-${firstLesson.id}`
-      : firstAssignment
-        ? `assignment-${firstAssignment.id}`
-        : null;
-    if (firstId) {
-      router.replace(`/student/courses/${courseId}?item=${firstId}`, {
-        scroll: false,
-      });
-    }
-  }, [courseId, course.modules, itemParam, router]);
-
-  if (!itemParam) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-16 text-center text-muted-foreground">
-        <BookOpen className="size-12" />
-        <p>Select a lesson or assignment from the sidebar.</p>
-      </div>
-    );
-  }
-
-  if (lesson) {
-    return <LessonView lesson={lesson} />;
-  }
-  if (assignment) {
-    return <AssignmentView assignment={assignment} />;
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center text-muted-foreground">
-      <FileQuestion className="size-12" />
-      <p>Select a lesson or assignment from the sidebar.</p>
-    </div>
-  );
-}
-
-function StudentCourseContent() {
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const courseId = params.courseId as string;
-  const itemParam = searchParams.get("item");
-
-  const {
-    data: course,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ["lms", "course", courseId],
-    queryFn: async () => {
-      const res = await axios.get<Course>(`/lms/courses/${courseId}`);
-      return res.data;
-    },
-    enabled: !!courseId,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)]">
-        <aside className="w-80 shrink-0 border-r bg-muted/30 p-4">
-          <Skeleton className="mb-4 h-8 w-48" />
-          <Skeleton className="h-64 w-full" />
-        </aside>
-        <main className="flex-1 overflow-auto p-6">
-          <Skeleton className="mb-4 h-10 w-3/4" />
-          <Skeleton className="h-48 w-full" />
-        </main>
-      </div>
-    );
-  }
-
-  if (isError || !course) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 p-12">
-        <AlertCircle className="size-12 text-destructive" />
-        <p className="text-lg text-muted-foreground">
-          Failed to load course. Please try again.
-        </p>
-        <Button variant="outline" onClick={() => refetch()}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
-  const hasAnyItems = course.modules?.some(
-    (m) => (m.lessons?.length ?? 0) > 0 || (m.assignments?.length ?? 0) > 0
-  );
-
-  if (!hasAnyItems) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
-        <BookOpen className="size-12 text-muted-foreground" />
-        <p className="text-lg text-muted-foreground">
-          This course has no lessons or assignments yet.
-        </p>
-        <Button variant="outline" asChild>
-          <Link href="/student/courses">Back to courses</Link>
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-[calc(100vh-4rem)]">
-      <aside className="w-80 shrink-0 border-r bg-muted/30">
-        <ScrollArea className="h-full">
-          <div className="p-4">
-            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-              Content
-            </h2>
-            <Accordion type="multiple" className="w-full" defaultValue={course.modules.map((m) => m.id)}>
-              {course.modules.map((mod) => {
-                const lessons = mod.lessons ?? [];
-                const assignments = mod.assignments ?? [];
-                const sortedLessons = [...lessons].sort(
-                  (a, b) => a.orderIndex - b.orderIndex
-                );
-                return (
-                  <AccordionItem key={mod.id} value={mod.id}>
-                    <AccordionTrigger className="text-left">
-                      {mod.title}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="space-y-0.5 pl-1">
-                        {sortedLessons.map((l) => (
-                          <li key={l.id}>
-                            <Link
-                              href={`/student/courses/${courseId}?item=lesson-${l.id}`}
-                              className={cn(
-                                "block rounded-md px-2 py-1.5 text-sm hover:bg-accent",
-                                itemParam === `lesson-${l.id}`
-                                  ? "bg-accent font-medium"
-                                  : ""
-                              )}
-                            >
-                              <span className="mr-1.5 inline-block size-4 shrink-0 text-muted-foreground">
-                                <BookOpen className="size-3.5" />
-                              </span>
-                              {l.title}
-                            </Link>
-                          </li>
-                        ))}
-                        {assignments.map((a) => (
-                          <li key={a.id}>
-                            <Link
-                              href={`/student/courses/${courseId}?item=assignment-${a.id}`}
-                              className={cn(
-                                "block rounded-md px-2 py-1.5 text-sm hover:bg-accent",
-                                itemParam === `assignment-${a.id}`
-                                  ? "bg-accent font-medium"
-                                  : ""
-                              )}
-                            >
-                              <span className="mr-1.5 inline-block size-4 shrink-0 text-muted-foreground">
-                                <FileQuestion className="size-3.5" />
-                              </span>
-                              {a.title}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          </div>
-        </ScrollArea>
-      </aside>
-      <main className="flex-1 overflow-auto p-6">
-        <CourseContent
-          courseId={courseId}
-          course={course}
-          itemParam={itemParam}
-        />
-      </main>
-    </div>
+    </Link>
   );
 }
 
@@ -384,5 +110,189 @@ export default function StudentCoursePage() {
     <RoleGuard allowedRoles={["STUDENT"]}>
       <StudentCourseContent />
     </RoleGuard>
+  );
+}
+
+function StudentCourseContent() {
+  const params = useParams();
+  const courseId = params.courseId as string;
+
+  const { data: course, isLoading, isError } = useQuery({
+    queryKey: ["lms", "course", courseId],
+    queryFn: async () => {
+      const response = await api.get<Course>(
+        `/lms/courses/${courseId}/classwork`,
+      );
+      return response.data;
+    },
+    enabled: !!courseId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
+  if (isError || !course) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-6 min-h-[400px]">
+        <BookOpen className="h-16 w-16 text-muted-foreground" />
+        <p className="text-lg text-muted-foreground">
+          Failed to load course. It may not exist or you may not have access.
+        </p>
+        <Link href="/student/courses">
+          <Button variant="outline">Back to Courses</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const sortedModules = [...(course.modules || [])].sort(
+    (a, b) => a.order - b.order,
+  );
+
+  const teacherName = course.teacher?.profile
+    ? `${course.teacher.profile.firstName} ${course.teacher.profile.lastName}`
+    : "Teacher";
+
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/student/courses" className="hover:underline">
+          Courses
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">{course.name}</span>
+      </div>
+
+      {/* Hero Header — Google Classroom–style banner */}
+      <div className="h-48 rounded-2xl p-6 relative overflow-hidden bg-[hsl(0,0%,16%)]">
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1' fill='%23ffffff'/%3E%3C/svg%3E")`,
+          }}
+        />
+        <div className="relative z-10 h-full flex flex-col justify-end">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            {course.name}
+          </h1>
+          <p className="text-white/90 text-sm mt-1">
+            Class / Section: {course.subject?.name ?? "—"}
+          </p>
+          <p className="text-white/80 text-sm mt-0.5">{teacherName}</p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="classwork" className="w-full">
+        <TabsList className="w-full justify-start rounded-lg border border-border/60 bg-muted/50 p-1">
+          <TabsTrigger value="classwork" className="gap-2">
+            <BookOpen className="h-4 w-4" />
+            Classwork
+          </TabsTrigger>
+          <TabsTrigger value="people" className="gap-2">
+            <Users className="h-4 w-4" />
+            People
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="classwork" className="mt-6">
+          {sortedModules.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-12 rounded-lg border border-dashed border-border">
+              <BookOpen className="h-12 w-12 text-muted-foreground" />
+              <p className="text-muted-foreground">
+                No classwork yet. Check back later.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              {sortedModules.map((mod, idx) => {
+                const sortedLessons = [...(mod.lessons ?? [])].sort(
+                  (a, b) => a.orderIndex - b.orderIndex,
+                );
+                const sortedMaterials = [...(mod.materials ?? [])].sort(
+                  (a, b) => a.order - b.order,
+                );
+                const materialItems: Array<{
+                  id: string;
+                  kind: ItemKind;
+                  type: "material" | "video" | "assignment" | "link";
+                  title: string;
+                  subtitle: string;
+                }> = [
+                  ...sortedLessons.map((lesson) => ({
+                    id: lesson.id,
+                    kind: "lesson" as const,
+                    type: (lesson.videoUrl ? "video" : "material") as const,
+                    title: lesson.title,
+                    subtitle: "Added recently",
+                  })),
+                  ...sortedMaterials.map((m) => ({
+                    id: m.id,
+                    kind: "material" as const,
+                    type:
+                      m.materialType === "YOUTUBE"
+                        ? ("video" as const)
+                        : m.materialType === "LINK"
+                          ? ("link" as const)
+                          : ("material" as const),
+                    title: m.title,
+                    subtitle: m.resourceUrl ? "Link" : "Added recently",
+                  })),
+                  ...(mod.assignments ?? []).map((a) => ({
+                    id: a.id,
+                    kind: "assignment" as const,
+                    type: "assignment" as const,
+                    title: a.title,
+                    subtitle: a.dueDate
+                      ? `Due ${format(new Date(a.dueDate), "MMM d, yyyy")}`
+                      : "No due date",
+                  })),
+                ];
+
+                return (
+                  <div key={mod.id}>
+                    <h2 className="font-bold text-2xl border-b-2 border-foreground pb-2 mb-4">
+                      Week {idx + 1}: {mod.title}
+                    </h2>
+                    <div className="space-y-1">
+                      {materialItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4">
+                          No materials yet.
+                        </p>
+                      ) : (
+                        materialItems.map((item) => (
+                          <StudentMaterialItemRow
+                            key={`${item.kind}-${item.id}`}
+                            type={item.type}
+                            title={item.title}
+                            subtitle={item.subtitle}
+                            href={`/student/courses/${courseId}/materials/${item.id}${item.kind === "assignment" ? "?kind=assignment" : ""}`}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="people" className="mt-6">
+          <div className="rounded-xl border border-border/60 bg-card p-6">
+            <p className="text-sm text-muted-foreground">
+              Classmates will appear here.
+            </p>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

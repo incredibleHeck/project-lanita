@@ -20,10 +20,16 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
 
     // Ensure user and role exist on request (populated by AuthGuard/Strategy)
-    if (!user || !user.role) {
+    if (!user) {
+      return false;
+    }
+    const userRole = user.role != null ? String(user.role).toUpperCase() : undefined;
+    if (!userRole) {
       return false;
     }
 
-    return requiredRoles.includes(user.role);
+    return requiredRoles.some(
+      (r) => String(r).toUpperCase() === userRole,
+    );
   }
 }

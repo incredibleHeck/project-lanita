@@ -88,7 +88,7 @@ export function getColumns(onEdit?: (student: Student) => void): ColumnDef<Stude
     cell: ({ row }) => {
       const isActive = row.original.isActive ?? true;
       return (
-        <Badge variant={isActive ? "default" : "destructive"} className={isActive ? "bg-green-500 hover:bg-green-600" : ""}>
+        <Badge variant={isActive ? "success" : "destructive-soft"}>
           {isActive ? "Active" : "Inactive"}
         </Badge>
       );

@@ -87,6 +87,7 @@ export function useOfflineAttendance({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance', allocationId, date] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard'] });
     },
   });
 
@@ -252,6 +253,7 @@ export function useOfflineAttendance({
       const count = await offlineDB.getPendingCount();
       setPendingCount(count);
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard'] });
     } finally {
       setIsSyncing(false);
     }

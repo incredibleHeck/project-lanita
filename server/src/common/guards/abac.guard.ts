@@ -122,7 +122,10 @@ export class ABACGuard implements CanActivate {
     if (!studentId) return true;
 
     const student = await this.prisma.studentRecord.findFirst({
-      where: { id: studentId, parentId: user.sub },
+      where: {
+        id: studentId,
+        guardians: { some: { parent: { userId: user.sub } } },
+      },
     });
 
     return !!student;

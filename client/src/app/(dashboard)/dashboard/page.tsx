@@ -7,6 +7,7 @@ import { Users, UserCheck, Calendar, Clock } from "lucide-react";
 import api from "@/lib/axios";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AttendanceChart } from "@/components/dashboard/attendance-chart";
@@ -113,46 +114,52 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
+        <Card className="border-border/50 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border hover:-translate-y-[2px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Students</CardTitle>
+            <span className="bg-primary/10 text-primary p-2 rounded-lg">
+              <Users className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.totalStudents ?? 0}</div>
+              <div className="text-3xl font-bold tracking-tight">{stats?.totalStudents ?? 0}</div>
             )}
             <p className="text-xs text-muted-foreground">Enrolled students</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/50 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border hover:-translate-y-[2px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Teachers</CardTitle>
+            <span className="bg-emerald-500/10 text-emerald-600 p-2 rounded-lg">
+              <UserCheck className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.totalTeachers ?? 0}</div>
+              <div className="text-3xl font-bold tracking-tight">{stats?.totalTeachers ?? 0}</div>
             )}
             <p className="text-xs text-muted-foreground">Teaching staff</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/50 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border hover:-translate-y-[2px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Term</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Current Term</CardTitle>
+            <span className="bg-blue-500/10 text-blue-600 p-2 rounded-lg">
+              <Calendar className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
-              <div className="text-2xl font-bold">{stats?.currentTerm ?? "N/A"}</div>
+              <div className="text-3xl font-bold tracking-tight">{stats?.currentTerm ?? "N/A"}</div>
             )}
             <p className="text-xs text-muted-foreground">Academic year</p>
           </CardContent>
@@ -170,10 +177,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      <Card>
+      <Card className="border-border/50 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border hover:-translate-y-[2px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
+            <span className="bg-amber-500/10 text-amber-600 p-2 rounded-lg">
+              <Clock className="h-5 w-5" />
+            </span>
             Recent Students
           </CardTitle>
         </CardHeader>
@@ -191,9 +200,11 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : recentStudents.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No students found.
-            </p>
+            <EmptyState
+              icon={<Users />}
+              title="No students found"
+              description="Students will appear here once enrolled"
+            />
           ) : (
             <div className="space-y-4">
               {recentStudents.map((student) => (

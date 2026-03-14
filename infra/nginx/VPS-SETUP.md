@@ -151,6 +151,14 @@ sudo systemctl status nginx
 2. Check for the padlock icon (valid SSL)
 3. Test API: `https://lanita.com/api/health` – should return `{"status":"ok","database":"connected"}`
 
+If the frontend does not load, ensure `WEB_PORT=4000` is set in your `.env` so the client container matches Nginx.
+
+---
+
+## Before Deploying with Docker
+
+**Critical:** Set `WEB_PORT=4000` in your `.env` file. The Nginx config proxies the frontend from `127.0.0.1:4000`; the client container must expose `4000:3001`. Without this, the frontend will not be reachable via Nginx.
+
 ---
 
 ## Production .env Configuration

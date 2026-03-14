@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files first for better layer caching
+COPY package.json package-lock.json* ./
+
+# Install dependencies (--legacy-peer-deps for react-paystack)
+RUN npm install --legacy-peer-deps
+
+# Copy rest of source (will be overwritten by volume mount in dev)
+COPY . .
+
+EXPOSE 3001
+
+# Next.js dev server - port 3001 to match docker-compose mapping
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
+
+# npm install runs on start to sync with mounted source
+CMD ["sh", "-c", "npm install --legacy-peer-deps && npm run dev"]

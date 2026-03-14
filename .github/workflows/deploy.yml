@@ -13,6 +13,8 @@
 #                   Generate with: ssh-keygen -t ed25519 -C "github-actions"
 #                   Add public key to VPS: ~/.ssh/authorized_keys
 #
+# Optional: VPS_PROJECT_PATH - Repo variable (Settings → Variables). Default: /var/www/project-lanita
+#
 # VPS .env (set on server, not via GitHub Secrets):
 # The deploy workflow does not inject env vars. Create .env on the VPS using
 # .env.production.example. Required: JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,
@@ -44,8 +46,8 @@ jobs:
           script: |
             echo "🚀 Starting deployment..."
             
-            # Navigate to project directory
-            cd /var/www/heckteck-sms || { echo "❌ Project directory not found"; exit 1; }
+            # Navigate to project directory (set VPS_PROJECT_PATH in repo variables if different)
+            cd ${{ vars.VPS_PROJECT_PATH || '/var/www/project-lanita' }} || { echo "❌ Project directory not found"; exit 1; }
             
             # Pull latest code from main branch
             echo "📥 Pulling latest code..."
@@ -62,18 +64,23 @@ jobs:
             # Show current memory status
             free -h
             
-            # Stop old containers and rebuild
-            echo "🐳 Rebuilding and starting containers..."
+            # Stop old containers
+            echo "🐳 Stopping containers..."
             docker-compose -f docker-compose.yml down --remove-orphans || true
-            docker-compose -f docker-compose.yml up -d --build
             
-            # Wait for database to be healthy
+            # Start database and wait for it to be healthy
+            echo "🗄️ Starting database..."
+            docker-compose -f docker-compose.yml up -d db
             echo "⏳ Waiting for database to be ready..."
             sleep 10
             
-            # Run Prisma migrations
+            # Run migrations before starting app containers (ensures schema is ready)
             echo "🔄 Running database migrations..."
-            docker exec -t lanita-server npx prisma migrate deploy
+            docker-compose -f docker-compose.yml run --rm server npx prisma migrate deploy
+            
+            # Rebuild and start all containers
+            echo "🐳 Rebuilding and starting containers..."
+            docker-compose -f docker-compose.yml up -d --build
             
             # Cleanup unused Docker resources to save disk space
             echo "🧹 Cleaning up unused Docker resources..."

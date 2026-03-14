@@ -19,7 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Edit2, UserCog } from "lucide-react";
 
 interface TeacherProfile {
   firstName?: string;
@@ -152,8 +153,13 @@ export default function TeachersPage() {
             <TableBody>
               {teachers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    No teachers found.
+                  <TableCell colSpan={6}>
+                    <EmptyState
+                      icon={<UserCog />}
+                      title="No teachers found"
+                      description="Add your first teacher to get started"
+                      variant="table"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -231,7 +237,7 @@ export default function TeachersPage() {
           >
             Previous
           </Button>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-foreground/80">
             Page {page} of {meta.lastPage}
           </div>
           <Button

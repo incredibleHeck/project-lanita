@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { useAuth } from "@/hooks/use-auth";
@@ -106,20 +107,22 @@ function TeacherCoursesContent() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {myCourses.map((course) => (
-          <Card key={course.id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-lg">{course.name}</CardTitle>
-              <CardDescription>
-                {course.subject.name}
-                {course.description ? ` · ${course.description.slice(0, 60)}${course.description.length > 60 ? "…" : ""}` : ""}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="mt-auto">
-              <p className="text-sm text-muted-foreground">
-                {course.modules?.length ?? 0} module{(course.modules?.length ?? 0) !== 1 ? "s" : ""}
-              </p>
-            </CardContent>
-          </Card>
+          <Link key={course.id} href={`/teacher/courses/${course.id}`}>
+            <Card className="flex flex-col h-full transition-colors hover:bg-muted/50 cursor-pointer">
+              <CardHeader>
+                <CardTitle className="text-lg">{course.name}</CardTitle>
+                <CardDescription>
+                  {course.subject.name}
+                  {course.description ? ` · ${course.description.slice(0, 60)}${course.description.length > 60 ? "…" : ""}` : ""}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="mt-auto">
+                <p className="text-sm text-muted-foreground">
+                  {course.modules?.length ?? 0} module{(course.modules?.length ?? 0) !== 1 ? "s" : ""}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
 import { GraduationCap, Users, Edit2, Trash2, MapPin, UserCircle } from "lucide-react";
 
 interface ClassItem {
@@ -156,9 +157,12 @@ export default function ClassesPage() {
       />
 
       {!classes || classes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 min-h-[300px] rounded-lg border border-dashed">
-          <GraduationCap className="h-16 w-16 text-muted-foreground" />
-          <p className="text-lg text-muted-foreground">No classes found.</p>
+        <div className="min-h-[300px] rounded-lg border border-dashed">
+          <EmptyState
+            icon={<GraduationCap />}
+            title="No classes found"
+            description="Add your first class to get started"
+          />
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

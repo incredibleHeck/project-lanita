@@ -119,7 +119,7 @@ function MessagesContent() {
       </div>
 
       <div className="flex flex-1 gap-4 min-h-0 border rounded-lg overflow-hidden">
-        <div className="w-80 border-r bg-muted/30 flex flex-col">
+        <div className="w-80 border-r border-border/50 bg-muted/30 flex flex-col shrink-0">
           <div className="p-4 border-b">
             <h3 className="font-semibold">Conversations</h3>
           </div>
@@ -137,8 +137,8 @@ function MessagesContent() {
                     className={cn(
                       'w-full text-left p-3 rounded-lg transition-colors',
                       selectedThreadId === thread.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
+                        ? 'bg-muted'
+                        : 'hover:bg-muted/50'
                     )}
                   >
                     <div className="font-medium truncate">
@@ -193,10 +193,10 @@ function MessagesContent() {
                         >
                           <div
                             className={cn(
-                              'max-w-[75%] rounded-lg px-4 py-2',
+                              'max-w-[75%] rounded-2xl px-4 py-2.5',
                               msg.senderId === user?.id
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted'
+                                ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                : 'bg-muted text-foreground rounded-bl-sm'
                             )}
                           >
                             <div className="text-sm">{msg.content}</div>

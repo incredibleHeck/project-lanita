@@ -29,7 +29,11 @@ export class BillingScheduler {
       include: {
         student: {
           include: {
-            parent: { include: { profile: true } },
+            guardians: {
+              include: {
+                parent: { include: { user: { include: { profile: true } } } },
+              },
+            },
             user: { include: { profile: true } },
           },
         },
@@ -38,7 +42,9 @@ export class BillingScheduler {
     });
 
     for (const invoice of upcomingDue) {
-      if (invoice.student.parent) {
+      const guardian = invoice.student.guardians[0];
+      const parent = guardian?.parent;
+      if (parent) {
         const schoolId =
           invoice.schoolId ?? invoice.student.schoolId ?? undefined;
         if (!schoolId) {
@@ -54,7 +60,7 @@ export class BillingScheduler {
 
           await this.notificationService.sendFeeReminder(
             schoolId,
-            invoice.student.parent.id,
+            parent.userId,
             `${invoice.student.user.profile?.firstName || ''} ${invoice.student.user.profile?.lastName || ''}`.trim(),
             totalAmount,
             invoice.term.name,
@@ -84,15 +90,22 @@ export class BillingScheduler {
       include: {
         student: {
           include: {
-            parent: { include: { profile: true } },
+            guardians: {
+              include: {
+                parent: { include: { user: { include: { profile: true } } } },
+              },
+            },
             user: { include: { profile: true } },
           },
         },
+        term: true,
       },
     });
 
     for (const invoice of overdue) {
-      if (invoice.student.parent) {
+      const guardian = invoice.student.guardians[0];
+      const parent = guardian?.parent;
+      if (parent) {
         const schoolId =
           invoice.schoolId ?? invoice.student.schoolId ?? undefined;
         if (!schoolId) {
@@ -108,7 +121,7 @@ export class BillingScheduler {
 
           await this.notificationService.sendFeeOverdue(
             schoolId,
-            invoice.student.parent.id,
+            parent.userId,
             `${invoice.student.user.profile?.firstName || ''} ${invoice.student.user.profile?.lastName || ''}`.trim(),
             balance,
           );

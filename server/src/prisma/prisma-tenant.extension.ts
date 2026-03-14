@@ -22,6 +22,7 @@ const TENANT_MODELS = new Set([
   'Course',
   'CourseModule',
   'Lesson',
+  'Material',
   'Assignment',
   'Submission',
 ]);

@@ -48,7 +48,7 @@ export function PayFeesDialog({
               <span>Card (Visa, Mastercard)</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Building2 className="h-4 w-4 text-slate-600" />
+              <Building2 className="h-4 w-4 text-foreground" />
               <span>Bank Transfer</span>
             </div>
             <div className="flex items-center gap-2 text-sm">

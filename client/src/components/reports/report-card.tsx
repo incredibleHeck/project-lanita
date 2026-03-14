@@ -88,17 +88,17 @@ export function ReportCard({ report }: ReportCardProps) {
           <h2 className="text-xl font-semibold uppercase tracking-widest">
             Terminal Report Card
           </h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-foreground mt-1">
             {report.exam} - {report.academicYear}
           </p>
         </div>
       </div>
 
       {/* Student Info Section */}
-      <div className="grid grid-cols-2 gap-6 mb-6 pb-6 border-b border-gray-300">
+      <div className="grid grid-cols-2 gap-6 mb-6 pb-6 border-b border-border">
         <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20 border-2 border-gray-300 print:border-gray-400">
-            <AvatarFallback className="text-xl bg-gray-100 text-gray-700">
+          <Avatar className="h-20 w-20 border-2 border-border print:border-border">
+            <AvatarFallback className="text-xl bg-muted text-foreground">
               {report.student.name
                 .split(" ")
                 .map((n) => n[0])
@@ -107,48 +107,48 @@ export function ReportCard({ report }: ReportCardProps) {
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm text-gray-500">Student Name</p>
+            <p className="text-sm text-foreground/80">Student Name</p>
             <p className="text-lg font-semibold">{report.student.name}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-500">Admission No.</p>
+            <p className="text-sm text-foreground/80">Admission No.</p>
             <p className="font-medium">{report.student.admissionNumber}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Class</p>
+            <p className="text-sm text-foreground/80">Class</p>
             <p className="font-medium">{report.student.class}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Academic Year</p>
+            <p className="text-sm text-foreground/80">Academic Year</p>
             <p className="font-medium">{report.academicYear}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Term/Exam</p>
+            <p className="text-sm text-foreground/80">Term/Exam</p>
             <p className="font-medium">{report.exam}</p>
           </div>
         </div>
       </div>
 
       {/* Attendance Summary */}
-      <div className="mb-6 pb-6 border-b border-gray-300">
-        <h3 className="text-sm font-semibold uppercase text-gray-600 mb-3">
+      <div className="mb-6 pb-6 border-b border-border">
+        <h3 className="text-sm font-semibold uppercase text-foreground mb-3">
           Attendance Summary
         </h3>
         <div className="flex gap-8">
           <div>
-            <p className="text-sm text-gray-500">Days Present</p>
+            <p className="text-sm text-foreground/80">Days Present</p>
             <p className="text-2xl font-bold text-green-600">
               {report.attendance.present}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Total Days</p>
+            <p className="text-sm text-foreground/80">Total Days</p>
             <p className="text-2xl font-bold">{report.attendance.total}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Attendance Rate</p>
+            <p className="text-sm text-foreground/80">Attendance Rate</p>
             <p
               className={`text-2xl font-bold ${
                 report.attendance.percentage >= 90
@@ -166,28 +166,28 @@ export function ReportCard({ report }: ReportCardProps) {
 
       {/* Grades Table */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold uppercase text-gray-600 mb-3">
+        <h3 className="text-sm font-semibold uppercase text-foreground mb-3">
           Academic Performance
         </h3>
         {report.results.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+          <div className="flex flex-col items-center justify-center py-8 text-foreground/80">
             <GraduationCap className="h-12 w-12 mb-2" />
             <p>No exam results recorded yet</p>
           </div>
         ) : (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
+              <tr className="bg-muted">
+                <th className="border border-border px-4 py-2 text-left font-semibold">
                   Subject
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-center font-semibold w-24">
+                <th className="border border-border px-4 py-2 text-center font-semibold w-24">
                   Score
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-center font-semibold w-24">
+                <th className="border border-border px-4 py-2 text-center font-semibold w-24">
                   Grade
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
+                <th className="border border-border px-4 py-2 text-left font-semibold">
                   Remarks
                 </th>
               </tr>
@@ -196,20 +196,20 @@ export function ReportCard({ report }: ReportCardProps) {
               {report.results.map((result, index) => (
                 <tr
                   key={index}
-                  className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  className={index % 2 === 0 ? "bg-white" : "bg-muted/50"}
                 >
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border border-border px-4 py-2">
                     {result.subject}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 text-center font-medium">
+                  <td className="border border-border px-4 py-2 text-center font-medium">
                     {result.score}
                   </td>
                   <td
-                    className={`border border-gray-300 px-4 py-2 text-center font-bold ${getGradeColor(result.grade)}`}
+                    className={`border border-border px-4 py-2 text-center font-bold ${getGradeColor(result.grade)}`}
                   >
                     {result.grade}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 text-gray-600">
+                  <td className="border border-border px-4 py-2 text-foreground">
                     {getGradeRemark(result.grade)}
                   </td>
                 </tr>
@@ -221,21 +221,21 @@ export function ReportCard({ report }: ReportCardProps) {
 
       {/* Summary Footer */}
       {report.results.length > 0 && (
-        <div className="grid grid-cols-2 gap-6 mb-8 pb-6 border-b border-gray-300">
+        <div className="grid grid-cols-2 gap-6 mb-8 pb-6 border-b border-border">
           <div className="flex gap-8">
             <div>
-              <p className="text-sm text-gray-500">Total Score</p>
+              <p className="text-sm text-foreground/80">Total Score</p>
               <p className="text-2xl font-bold">{report.summary.total}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Average Score</p>
+              <p className="text-sm text-foreground/80">Average Score</p>
               <p className="text-2xl font-bold text-blue-600">
                 {report.summary.average.toFixed(1)}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-500">Out of</p>
+            <p className="text-sm text-foreground/80">Out of</p>
             <p className="text-2xl font-bold">{report.results.length * 100}</p>
           </div>
         </div>
@@ -245,17 +245,17 @@ export function ReportCard({ report }: ReportCardProps) {
       <div className="grid grid-cols-2 gap-8 mt-8 pt-8">
         <div>
           <div className="border-b border-black w-48 mb-2"></div>
-          <p className="text-sm text-gray-600">Class Teacher&apos;s Signature</p>
+          <p className="text-sm text-foreground">Class Teacher&apos;s Signature</p>
         </div>
         <div className="text-right">
           <div className="border-b border-black w-48 ml-auto mb-2"></div>
-          <p className="text-sm text-gray-600">Principal&apos;s Signature</p>
+          <p className="text-sm text-foreground">Principal&apos;s Signature</p>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="text-center mt-8 pt-4 border-t border-gray-200">
-        <p className="text-xs text-gray-500">
+      <div className="text-center mt-8 pt-4 border-t border-border">
+        <p className="text-xs text-foreground/80">
           This is a computer-generated report card. For any queries, please
           contact the school administration.
         </p>

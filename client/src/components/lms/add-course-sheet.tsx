@@ -30,6 +30,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -122,7 +123,7 @@ export function AddCourseSheet({ trigger }: AddCourseSheetProps) {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="flex flex-col sm:max-w-md overflow-y-auto"
+        className="flex flex-col sm:max-w-md"
       >
         <SheetHeader>
           <SheetTitle>Add Course</SheetTitle>
@@ -130,8 +131,9 @@ export function AddCourseSheet({ trigger }: AddCourseSheetProps) {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-4 px-4 pb-4"
+            className="flex flex-1 min-h-0 flex-col"
           >
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-4">
             <FormField
               control={form.control}
               name="title"
@@ -191,21 +193,30 @@ export function AddCourseSheet({ trigger }: AddCourseSheetProps) {
                 </FormItem>
               )}
             />
+            </div>
 
-            <Button
-              type="submit"
-              disabled={createCourse.isPending}
-              className="mt-4"
-            >
-              {createCourse.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Course"
-              )}
-            </Button>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createCourse.isPending}
+              >
+                {createCourse.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Course"
+                )}
+              </Button>
+            </SheetFooter>
           </form>
         </Form>
       </SheetContent>

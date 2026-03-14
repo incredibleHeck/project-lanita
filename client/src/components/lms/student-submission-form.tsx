@@ -19,21 +19,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
-const submissionSchema = z.object({
-  content: z.string().min(1, "Your answer is required"),
-  fileUrl: z.string().optional(),
-});
+const submissionSchema = z
+  .object({
+    content: z.string().optional(),
+    fileUrl: z.string().optional(),
+  })
+  .refine(
+    (data) => !!(data.content?.trim() || data.fileUrl?.trim()),
+    { message: "Either your answer or a file link is required", path: ["content"] },
+  );
 
 type SubmissionFormData = z.infer<typeof submissionSchema>;
 
 interface StudentSubmissionFormProps {
   assignmentId: string;
   onSuccess?: () => void;
+  /** Custom submit button label (default: "Submit assignment") */
+  submitLabel?: string;
 }
 
 export function StudentSubmissionForm({
   assignmentId,
   onSuccess,
+  submitLabel = "Submit assignment",
 }: StudentSubmissionFormProps) {
   const queryClient = useQueryClient();
 
@@ -47,7 +55,7 @@ export function StudentSubmissionForm({
 
   const mutation = useMutation({
     mutationFn: async (data: SubmissionFormData) => {
-      return axios.post(`/lms/assignments/${assignmentId}/submit`, {
+      return axios.post(`/lms/assignments/${assignmentId}/submissions`, {
         content: data.content,
         fileUrl: data.fileUrl || undefined,
       });
@@ -112,14 +120,14 @@ export function StudentSubmissionForm({
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={mutation.isPending}>
+        <Button type="submit" disabled={mutation.isPending} className="w-full">
           {mutation.isPending ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
               Submitting...
             </>
           ) : (
-            "Submit assignment"
+            submitLabel
           )}
         </Button>
       </form>

@@ -30,15 +30,17 @@ export function DistributionChart({ data, isLoading }: DistributionChartProps) {
   const total = data?.reduce((sum, item) => sum + item.value, 0) ?? 0;
 
   return (
-    <Card>
+    <Card className="border-border/50 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border hover:-translate-y-[2px]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <PieChartIcon className="h-5 w-5" />
+          <span className="bg-violet-500/10 text-violet-600 p-2 rounded-lg">
+            <PieChartIcon className="h-5 w-5" />
+          </span>
           Student Distribution by Class
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
+        <div className="h-[300px] p-6 pt-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Skeleton className="h-[200px] w-[200px] rounded-full" />

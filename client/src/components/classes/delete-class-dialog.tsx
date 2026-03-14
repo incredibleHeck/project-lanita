@@ -68,7 +68,7 @@ export function DeleteClassDialog({
           <DialogDescription>
             Are you sure you want to delete &quot;{classItem?.name}&quot;?
             {sectionCount > 0 && (
-              <span className="mt-2 block text-amber-600 dark:text-amber-500">
+              <span className="mt-2 block text-amber-600">
                 This will remove the class and its {sectionCount} section
                 {sectionCount !== 1 ? "s" : ""}. This action cannot be undone.
               </span>

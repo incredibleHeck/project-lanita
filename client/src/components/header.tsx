@@ -62,7 +62,7 @@ export function Header({ className }: HeaderProps) {
   };
 
   return (
-    <header className={cn("sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", className)}>
+    <header className={cn("sticky top-0 z-50 w-full border-b border-border/40 backdrop-blur-md bg-white supports-[backdrop-filter]:bg-white/95", className)}>
       <div className="flex h-14 items-center px-4 md:px-6">
         {/* Mobile Menu Button */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -84,6 +84,9 @@ export function Header({ className }: HeaderProps) {
 
               {/* Navigation */}
               <div className="flex-1 px-3 py-4 space-y-1">
+                <p className="px-3 mb-2 text-xs font-medium tracking-wider uppercase text-muted-foreground">
+                  Navigation
+                </p>
                 {getNavigation(user?.role).map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
@@ -92,10 +95,10 @@ export function Header({ className }: HeaderProps) {
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        "flex items-center gap-3 px-4 py-4 border-b border-border/40 text-base font-medium transition-all duration-200 ease-in-out border-l-4 last:border-b-0",
                         isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          ? "bg-primary/10 text-primary border-primary font-semibold"
+                          : "border-transparent text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground hover:translate-x-1"
                       )}
                     >
                       <item.icon className="h-5 w-5" />

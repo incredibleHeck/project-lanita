@@ -29,6 +29,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -126,7 +127,7 @@ export function EditSectionSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex flex-col sm:max-w-md overflow-y-auto"
+        className="flex flex-col sm:max-w-md"
       >
         <SheetHeader>
           <SheetTitle>Edit Section</SheetTitle>
@@ -134,8 +135,9 @@ export function EditSectionSheet({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-4 px-4 pb-4"
+            className="flex flex-1 min-h-0 flex-col"
           >
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-4">
             <FormField
               control={form.control}
               name="name"
@@ -200,21 +202,30 @@ export function EditSectionSheet({
                 </FormItem>
               )}
             />
+            </div>
 
-            <Button
-              type="submit"
-              disabled={updateSection.isPending}
-              className="mt-4"
-            >
-              {updateSection.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateSection.isPending}
+              >
+                {updateSection.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </SheetFooter>
           </form>
         </Form>
       </SheetContent>

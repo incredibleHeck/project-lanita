@@ -24,7 +24,9 @@ async function main() {
   await prisma.subjectAllocation.deleteMany();
   await prisma.exam.deleteMany();
   await prisma.term.deleteMany();
+  await prisma.studentGuardian.deleteMany();
   await prisma.studentRecord.deleteMany();
+  await prisma.parent.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.section.deleteMany();
   await prisma.room.deleteMany();
@@ -268,6 +270,9 @@ async function main() {
       },
     },
   });
+  const parent1Record = await prisma.parent.create({
+    data: { userId: parent1.id, schoolId: defaultSchool.id },
+  });
   console.log('Parent created: parent1@heckteck.com');
 
   // Step 10: Create Students
@@ -305,11 +310,18 @@ async function main() {
         admissionNumber,
         enrollmentDate: new Date(),
         currentSectionId: sectionId,
-        // Link first 3 students to parent1
-        parentId: i <= 3 ? parent1.id : undefined,
       },
     });
     studentRecords.push(studentRecord);
+    if (i <= 3) {
+      await prisma.studentGuardian.create({
+        data: {
+          studentRecordId: studentRecord.id,
+          parentId: parent1Record.id,
+          schoolId: defaultSchool.id,
+        },
+      });
+    }
   }
   console.log('50 Students created and assigned to sections.');
   console.log('First 3 students linked to parent1@heckteck.com');

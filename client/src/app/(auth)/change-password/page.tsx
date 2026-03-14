@@ -88,8 +88,8 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <Card className="w-full max-w-md bg-white border border-border/40 shadow-xl shadow-black/5 border-t-2 border-t-primary">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center mb-4">
             <div className="h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
@@ -120,6 +120,7 @@ export default function ChangePasswordPage() {
                       <Input
                         type="password"
                         placeholder="Enter your current password"
+                        className="h-11 px-4 bg-muted/50"
                         {...field}
                       />
                     </FormControl>
@@ -137,6 +138,7 @@ export default function ChangePasswordPage() {
                       <Input
                         type="password"
                         placeholder="Enter your new password"
+                        className="h-11 px-4 bg-muted/50"
                         {...field}
                       />
                     </FormControl>
@@ -154,6 +156,7 @@ export default function ChangePasswordPage() {
                       <Input
                         type="password"
                         placeholder="Confirm your new password"
+                        className="h-11 px-4 bg-muted/50"
                         {...field}
                       />
                     </FormControl>
@@ -161,7 +164,7 @@ export default function ChangePasswordPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11 transition-all duration-200 active:scale-[0.98] active:opacity-90" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

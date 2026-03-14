@@ -29,6 +29,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -157,7 +158,7 @@ export function AddSectionSheet({
       <SheetTrigger asChild>{sheetTrigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="flex flex-col sm:max-w-md overflow-y-auto"
+        className="flex flex-col sm:max-w-md"
       >
         <SheetHeader>
           <SheetTitle>
@@ -167,8 +168,9 @@ export function AddSectionSheet({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-4 px-4 pb-4"
+            className="flex flex-1 min-h-0 flex-col"
           >
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-4">
             <FormField
               control={form.control}
               name="classId"
@@ -262,21 +264,30 @@ export function AddSectionSheet({
                 </FormItem>
               )}
             />
+            </div>
 
-            <Button
-              type="submit"
-              disabled={createSection.isPending}
-              className="mt-4"
-            >
-              {createSection.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add Section"
-              )}
-            </Button>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createSection.isPending}
+              >
+                {createSection.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Section"
+                )}
+              </Button>
+            </SheetFooter>
           </form>
         </Form>
       </SheetContent>

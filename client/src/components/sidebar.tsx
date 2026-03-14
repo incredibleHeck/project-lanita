@@ -129,11 +129,6 @@ const studentNavigation = [
     icon: CalendarCheck,
   },
   {
-    name: "My Fees",
-    href: "/student/billing",
-    icon: Wallet,
-  },
-  {
     name: "Announcements",
     href: "/announcements",
     icon: Megaphone,
@@ -187,9 +182,9 @@ export function Sidebar({ className }: SidebarProps) {
   const navigation = getNavigation(user?.role);
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn("flex flex-col h-full bg-background", className)}>
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b">
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-border/60">
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
           <span className="text-lg font-bold text-primary-foreground">H</span>
         </div>
@@ -198,6 +193,9 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
+        <p className="px-3 mb-2 text-xs font-medium tracking-wider uppercase text-muted-foreground">
+          Navigation
+        </p>
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -205,10 +203,10 @@ export function Sidebar({ className }: SidebarProps) {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out border-l-4",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-primary/10 text-primary border-primary font-semibold"
+                  : "border-transparent text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground hover:translate-x-1"
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -219,7 +217,7 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t">
+      <div className="px-6 py-4 border-t border-border/60">
         <p className="text-xs text-muted-foreground">
           © 2025 HeckTeck SMS
         </p>

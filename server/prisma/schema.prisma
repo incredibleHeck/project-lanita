@@ -80,6 +80,12 @@ enum RecipientType {
   STUDENT
 }
 
+enum MaterialType {
+  FILE
+  YOUTUBE
+  LINK
+}
+
 enum AnnouncementScope {
   SCHOOL_WIDE
   CLASS
@@ -131,9 +137,12 @@ model School {
   notificationLogs NotificationLog[]
   messageThreads   MessageThread[]
   auditLogs       AuditLog[]
+  parents         Parent[]
+  studentGuardians StudentGuardian[]
   courses         Course[]
   courseModules   CourseModule[]
   lessons        Lesson[]
+  materials       Material[]
   assignments    Assignment[]
   submissions    Submission[]
   paymentTransactions PaymentTransaction[]
@@ -179,7 +188,7 @@ model User {
 
   // Relations for Student domain
   studentRecord StudentRecord?  @relation("UserToStudent")
-  children      StudentRecord[] @relation("ParentToStudent")
+  parentProfile Parent?         @relation("UserToParent")
   
   // Relation for Teacher domain
   teacherAllocations SubjectAllocation[]
@@ -242,6 +251,7 @@ model Section {
   students       StudentRecord[]
   allocations    SubjectAllocation[]
   timetableSlots TimetableSlot[]
+  courses        Course[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -308,8 +318,17 @@ model StudentRecord {
   currentSection   Section @relation(fields: [currentSectionId], references: [id])
   currentSectionId String  @db.Uuid
 
-  parent   User?   @relation("ParentToStudent", fields: [parentId], references: [id])
-  parentId String? @db.Uuid
+  // Extended registration fields
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?
+  bloodGroup       String?
+  allergies        String[]  @default([])
+  medicalConditions String?
+  previousSchool   String?
+  specialNeeds     String?
+
+  guardians        StudentGuardian[]
 
   attendance     AttendanceRecord[]
   results        Result[]
@@ -322,6 +341,47 @@ model StudentRecord {
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
+}
+
+model Parent {
+  id                   String   @id @default(uuid()) @db.Uuid
+  schoolId             String?   @db.Uuid
+  school               School?   @relation(fields: [schoolId], references: [id])
+  userId               String   @unique @db.Uuid
+  user                 User     @relation("UserToParent", fields: [userId], references: [id])
+
+  relationship         String?
+  whatsappNumber       String?
+  occupation           String?
+  employer             String?
+  secondaryContactName String?
+  secondaryContactPhone String?
+
+  studentGuardians StudentGuardian[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([userId])
+}
+
+model StudentGuardian {
+  id              String         @id @default(uuid()) @db.Uuid
+  schoolId        String?        @db.Uuid
+  school          School?        @relation(fields: [schoolId], references: [id])
+  studentRecordId String         @db.Uuid
+  studentRecord   StudentRecord  @relation(fields: [studentRecordId], references: [id], onDelete: Cascade)
+  parentId        String         @db.Uuid
+  parent          Parent         @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentRecordId, parentId])
+  @@index([schoolId])
+  @@index([studentRecordId])
+  @@index([parentId])
 }
 
 model AttendanceRecord {
@@ -637,7 +697,7 @@ model Announcement {
   @@index([schoolId])
 }
 
-// --- LMS ---
+// --- LMS (Courses -> Modules -> Lessons/Materials) ---
 
 model Course {
   id              String        @id @default(uuid()) @db.Uuid
@@ -650,7 +710,9 @@ model Course {
   subject         Subject      @relation(fields: [subjectId], references: [id])
   teacherId       String?       @db.Uuid
   teacher         User?        @relation(fields: [teacherId], references: [id])
-  academicYearId  String?      @db.Uuid
+  sectionId       String?       @db.Uuid
+  section         Section?     @relation(fields: [sectionId], references: [id])
+  academicYearId  String?       @db.Uuid
   academicYear    AcademicYear? @relation(fields: [academicYearId], references: [id])
   modules         CourseModule[]
   createdAt       DateTime     @default(now())
@@ -659,6 +721,7 @@ model Course {
   @@index([schoolId])
   @@index([teacherId])
   @@index([subjectId])
+  @@index([sectionId])
 }
 
 model CourseModule {
@@ -671,6 +734,7 @@ model CourseModule {
   description String?
   order       Int       @default(0)
   lessons     Lesson[]
+  materials   Material[]
   assignments Assignment[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -696,6 +760,24 @@ model Lesson {
   @@index([schoolId])
 }
 
+model Material {
+  id           String       @id @default(uuid()) @db.Uuid
+  schoolId     String       @db.Uuid
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  moduleId     String       @db.Uuid
+  module       CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?      @db.Text
+  materialType MaterialType
+  resourceUrl  String?
+  order        Int          @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([schoolId])
+  @@index([moduleId])
+}
+
 model Assignment {
   id          String       @id @default(uuid()) @db.Uuid
   title       String
@@ -718,7 +800,7 @@ model Submission {
   id           String        @id @default(uuid()) @db.Uuid
   content      String?       @db.Text
   fileUrl      String?
-  score        Float?
+  score        Float?        // grade from teacher
   feedback     String?       @db.Text
   gradedAt     DateTime?
   gradedById   String?       @db.Uuid

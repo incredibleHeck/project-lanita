@@ -51,17 +51,17 @@ crontab -e
 Add:
 
 ```
-0 2 * * * cd /var/www/heckteck-sms && POSTGRES_PASSWORD="your-password" ./scripts/backup-db.sh
+0 2 * * * cd /var/www/project-lanita && POSTGRES_PASSWORD="your-password" ./scripts/backup-db.sh
 ```
 
-Replace `your-password` with your actual `POSTGRES_PASSWORD` (or source your `.env` before running).
+Replace `your-password` with your actual `POSTGRES_PASSWORD` (or source your `.env` before running). Replace `/var/www/project-lanita` with your actual project directory if different.
 
 ### Retention
 
 Keep the last 7 daily backups. Add a cleanup cron job:
 
 ```
-0 3 * * * find /var/www/heckteck-sms/backups -name "lanita_*.sql" -mtime +7 -delete
+0 3 * * * find /var/www/project-lanita/backups -name "lanita_*.sql" -mtime +7 -delete
 ```
 
 This runs at 3 AM and deletes backups older than 7 days.

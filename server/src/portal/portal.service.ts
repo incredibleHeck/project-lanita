@@ -146,12 +146,20 @@ export class PortalService {
       return false;
     }
 
-    return studentRecord.parentId === parentUserId;
+    const hasGuardian = await this.prisma.studentGuardian.findFirst({
+      where: {
+        studentRecordId: studentRecord.id,
+        parent: { userId: parentUserId },
+      },
+    });
+    return !!hasGuardian;
   }
 
   async getParentChildren(parentUserId: string) {
     const children = await this.prisma.studentRecord.findMany({
-      where: { parentId: parentUserId },
+      where: {
+        guardians: { some: { parent: { userId: parentUserId } } },
+      },
       include: {
         user: {
           include: {

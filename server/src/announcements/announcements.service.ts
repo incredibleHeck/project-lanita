@@ -71,17 +71,23 @@ export class AnnouncementsService {
         announcement.scope === 'SECTION'
           ? await this.prisma.studentRecord.findMany({
               where: { currentSectionId: announcement.scopeId },
-              include: { parent: true },
+              include: {
+                guardians: { include: { parent: { include: { user: true } } } },
+              },
             })
           : await this.prisma.studentRecord.findMany({
               where: {
                 currentSection: { classId: announcement.scopeId },
               },
-              include: { parent: true },
+              include: {
+                guardians: { include: { parent: { include: { user: true } } } },
+              },
             });
 
       const parentIds = new Set(
-        students.map((s) => s.parentId).filter(Boolean) as string[],
+        students.flatMap((s) =>
+          s.guardians.map((g) => g.parent.userId),
+        ),
       );
       for (const parentId of parentIds) {
         await this.notificationService.sendAnnouncement(
@@ -164,7 +170,9 @@ export class AnnouncementsService {
 
     if (role === 'PARENT') {
       const children = await this.prisma.studentRecord.findMany({
-        where: { parentId: userId },
+        where: {
+          guardians: { some: { parent: { userId } } },
+        },
         include: { currentSection: true },
       });
       for (const child of children) {

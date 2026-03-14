@@ -452,7 +452,13 @@ export class BillingService {
       return false;
     }
 
-    return studentRecord.parentId === parentUserId;
+    const hasGuardian = await this.prisma.studentGuardian.findFirst({
+      where: {
+        studentRecordId,
+        parent: { userId: parentUserId },
+      },
+    });
+    return !!hasGuardian;
   }
 
   async verifyStudentAccess(
@@ -477,7 +483,11 @@ export class BillingService {
     const invoice = await this.prisma.studentInvoice.findFirst({
       where: { id: dto.invoiceId },
       include: {
-        student: { include: { parent: true } },
+        student: {
+          include: {
+            guardians: { include: { parent: { include: { user: true } } } },
+          },
+        },
       },
     });
 
@@ -505,8 +515,9 @@ export class BillingService {
       throw new BadRequestException('No remaining balance to pay');
     }
 
-    const parent = invoice.student.parent;
-    if (!parent?.email) {
+    const guardian = invoice.student.guardians[0];
+    const parentUser = guardian?.parent?.user;
+    if (!parentUser?.email) {
       throw new BadRequestException(
         'Parent email is required for online payment',
       );
@@ -533,7 +544,7 @@ export class BillingService {
     const amountInPesewas = Math.round(remainingNum * 100);
     const result = await this.paystackService.initializeTransaction(
       amountInPesewas,
-      parent.email,
+      parentUser.email,
       reference,
       dto.callbackUrl,
     );
@@ -542,7 +553,7 @@ export class BillingService {
       authorization_url: result.authorization_url,
       reference,
       amount: remainingNum,
-      email: parent.email,
+      email: parentUser.email,
     };
   }
 

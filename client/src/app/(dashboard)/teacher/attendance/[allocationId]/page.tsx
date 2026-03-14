@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarIcon, Loader2, ArrowLeft } from "lucide-react";
+import { CalendarIcon, Loader2, ArrowLeft, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -238,8 +239,12 @@ export default function AttendancePage({ params }: { params: Promise<{ allocatio
       </div>
 
       {students.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 min-h-[400px] rounded-lg border border-dashed">
-          <p className="text-lg text-muted-foreground">No students found in this section.</p>
+        <div className="min-h-[400px] rounded-lg border border-dashed">
+          <EmptyState
+            icon={<Users />}
+            title="No students found"
+            description="No students are enrolled in this section"
+          />
         </div>
       ) : (
         <div className="rounded-md border shadow-sm">

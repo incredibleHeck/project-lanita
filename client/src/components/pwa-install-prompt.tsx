@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Download, Smartphone } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -83,8 +84,15 @@ export function PWAInstallPrompt() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50">
-      <div className="bg-background rounded-lg shadow-xl w-full max-w-md animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
+      <div
+        className={cn(
+          "bg-background w-full sm:max-w-md sm:mx-auto",
+          "rounded-t-2xl sm:rounded-lg",
+          "shadow-[0_-4px_20px_rgba(0,0,0,0.15)] sm:shadow-xl",
+          "animate-in slide-in-from-bottom-4 duration-300"
+        )}
+      >
         <div className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">

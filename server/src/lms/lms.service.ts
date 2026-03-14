@@ -9,6 +9,7 @@ import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
+import { CreateMaterialDto } from './dto/create-material.dto';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { SubmitAssignmentDto } from './dto/submit-assignment.dto';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
@@ -54,8 +55,10 @@ export class LmsService {
         subject: true,
         teacher: { include: { profile: true } },
         modules: {
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
           include: {
-            lessons: { orderBy: { orderIndex: 'asc' } },
+            lessons: { orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }] },
+            materials: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
             assignments: true,
           },
         },
@@ -111,6 +114,60 @@ export class LmsService {
     });
   }
 
+  async createMaterial(
+    courseId: string,
+    moduleId: string,
+    dto: CreateMaterialDto,
+  ) {
+    const schoolId = getTenantSchoolId();
+    if (!schoolId) {
+      throw new BadRequestException('Tenant context is required');
+    }
+    const courseModule = await this.prisma.courseModule.findFirst({
+      where: { id: moduleId, courseId },
+    });
+    if (!courseModule) {
+      throw new NotFoundException('Module not found');
+    }
+    return this.prisma.material.create({
+      data: {
+        schoolId,
+        moduleId,
+        title: dto.title,
+        description: dto.description,
+        materialType: dto.materialType,
+        resourceUrl: dto.resourceUrl,
+        order: dto.order ?? 0,
+      },
+    });
+  }
+
+  async getCourseClasswork(courseId: string) {
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId },
+      include: {
+        subject: true,
+        teacher: { include: { profile: true } },
+        modules: {
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+          include: {
+            lessons: {
+              orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }],
+            },
+            materials: {
+              orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+            },
+            assignments: true,
+          },
+        },
+      },
+    });
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+    return course;
+  }
+
   async createAssignment(moduleId: string, dto: CreateAssignmentDto) {
     const schoolId = getTenantSchoolId();
     if (!schoolId) {
@@ -143,6 +200,13 @@ export class LmsService {
     if (!schoolId) {
       throw new BadRequestException('Tenant context is required');
     }
+
+    if (!dto.content?.trim() && !dto.fileUrl?.trim()) {
+      throw new BadRequestException(
+        'Either content or fileUrl is required',
+      );
+    }
+
     const assignment = await this.prisma.assignment.findFirst({
       where: { id: assignmentId },
     });
@@ -173,8 +237,8 @@ export class LmsService {
           schoolId,
           assignmentId,
           studentId: studentRecord.id,
-          content: dto.content,
-          fileUrl: dto.fileUrl,
+          content: dto.content?.trim() || undefined,
+          fileUrl: dto.fileUrl?.trim() || undefined,
         },
       });
     } catch (error) {
@@ -204,7 +268,7 @@ export class LmsService {
     return this.prisma.submission.update({
       where: { id: submissionId },
       data: {
-        score: dto.score,
+        score: dto.grade,
         feedback: dto.feedback,
         gradedAt: new Date(),
         gradedById: graderUserId,
@@ -271,6 +335,7 @@ export class LmsService {
         lessons: {
           orderBy: { orderIndex: 'asc' },
         },
+        materials: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] },
         assignments: true,
       },
     });
@@ -278,5 +343,158 @@ export class LmsService {
       throw new NotFoundException('Module not found');
     }
     return courseModule;
+  }
+
+  async getMaterialById(materialId: string) {
+    const material = await this.prisma.material.findFirst({
+      where: { id: materialId },
+    });
+    if (!material) {
+      throw new NotFoundException('Material not found');
+    }
+    return material;
+  }
+
+  async getLessonById(lessonId: string) {
+    const lesson = await this.prisma.lesson.findFirst({
+      where: { id: lessonId },
+    });
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+    return lesson;
+  }
+
+  async getAssignmentById(
+    assignmentId: string,
+    studentUserId?: string,
+  ) {
+    const assignment = await this.prisma.assignment.findFirst({
+      where: { id: assignmentId },
+    });
+    if (!assignment) {
+      throw new NotFoundException('Assignment not found');
+    }
+
+    let submission: { id: string; createdAt: string } | null = null;
+    if (studentUserId) {
+      const studentRecord = await this.prisma.studentRecord.findFirst({
+        where: { userId: studentUserId },
+      });
+      if (studentRecord) {
+        const sub = await this.prisma.submission.findFirst({
+          where: {
+            assignmentId,
+            studentId: studentRecord.id,
+          },
+          select: { id: true, createdAt: true },
+        });
+        if (sub) {
+          submission = {
+            id: sub.id,
+            createdAt: sub.createdAt.toISOString(),
+          };
+        }
+      }
+    }
+
+    return {
+      ...assignment,
+      dueDate: assignment.dueDate?.toISOString() ?? null,
+      submission,
+    };
+  }
+
+  async getAssignmentSubmissionsForGrading(assignmentId: string) {
+    const assignment = await this.prisma.assignment.findFirst({
+      where: { id: assignmentId },
+      include: {
+        module: {
+          include: {
+            course: {
+              include: {
+                section: {
+                  include: {
+                    students: {
+                      include: {
+                        user: {
+                          include: { profile: true },
+                        },
+                      },
+                      orderBy: { admissionNumber: 'asc' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!assignment) {
+      throw new NotFoundException('Assignment not found');
+    }
+
+    const section = assignment.module?.course?.section;
+    if (!section) {
+      return {
+        assignment: {
+          id: assignment.id,
+          title: assignment.title,
+          dueDate: assignment.dueDate?.toISOString() ?? null,
+          maxScore: assignment.maxScore,
+        },
+        courseId: assignment.module?.course?.id ?? null,
+        students: [],
+      };
+    }
+
+    const submissions = await this.prisma.submission.findMany({
+      where: { assignmentId },
+      include: { student: true },
+    });
+    const submissionByStudentId = new Map(
+      submissions.map((s) => [s.studentId, s]),
+    );
+
+    const students = section.students.map((student) => {
+      const sub = submissionByStudentId.get(student.id);
+      let status: 'Turned In' | 'Graded' | 'Missing' = 'Missing';
+      if (sub) {
+        status = sub.gradedAt ? 'Graded' : 'Turned In';
+      }
+      const profile = student.user?.profile;
+      const name = profile
+        ? `${profile.firstName} ${profile.lastName}`.trim() || 'Student'
+        : 'Student';
+      return {
+        id: student.id,
+        userId: student.userId,
+        name,
+        avatarUrl: profile?.avatarUrl ?? null,
+        status,
+        submission: sub
+          ? {
+              id: sub.id,
+              content: sub.content,
+              fileUrl: sub.fileUrl,
+              score: sub.score,
+              feedback: sub.feedback,
+              gradedAt: sub.gradedAt?.toISOString() ?? null,
+            }
+          : null,
+      };
+    });
+
+    return {
+      assignment: {
+        id: assignment.id,
+        title: assignment.title,
+        dueDate: assignment.dueDate?.toISOString() ?? null,
+        maxScore: assignment.maxScore,
+      },
+      courseId: assignment.module?.course?.id ?? null,
+      students,
+    };
   }
 }

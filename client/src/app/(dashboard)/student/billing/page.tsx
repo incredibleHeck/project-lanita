@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { RoleGuard } from "@/components/role-guard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -107,7 +108,7 @@ function BillingContent() {
       case "OVERDUE":
         return <Badge className="bg-red-100 text-red-800">Overdue</Badge>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800">Pending</Badge>;
+        return <Badge className="bg-muted text-foreground">Pending</Badge>;
     }
   };
 
@@ -192,10 +193,11 @@ function BillingContent() {
         </CardHeader>
         <CardContent>
           {statement.invoices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <Receipt className="h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">No invoices found</p>
-            </div>
+            <EmptyState
+              icon={<Receipt />}
+              title="No invoices found"
+              description="Your fee invoices will appear here"
+            />
           ) : (
             <div className="space-y-6">
               {statement.invoices.map((invoice) => (

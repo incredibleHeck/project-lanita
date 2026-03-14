@@ -12,7 +12,7 @@ import { UserEntity } from '../common/entities/user.entity';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { getInitialPassword } from '../common/utils/password.utils';
 import * as argon2 from 'argon2';
-import { UserRole } from '@prisma/client';
+import { Gender, UserRole } from '@prisma/client';
 
 @Injectable()
 export class StudentsService {
@@ -58,7 +58,7 @@ export class StudentsService {
 
     try {
       const user = await this.prisma.$transaction(async (tx) => {
-        // Step A: Create User
+        // Step A: Create User (Student)
         const user = await tx.user.create({
           data: {
             email: createStudentDto.email,
@@ -86,18 +86,102 @@ export class StudentsService {
           },
         });
 
-        // Step C: Create StudentRecord
+        // Step C: Create StudentRecord with extended fields
         if (!createStudentDto.sectionId) {
           throw new Error('Section ID is required');
         }
-        await tx.studentRecord.create({
-          data: {
-            userId: user.id,
-            admissionNumber,
-            enrollmentDate: new Date(createStudentDto.admissionDate),
-            currentSectionId: createStudentDto.sectionId,
-          },
+
+        const studentRecordData = {
+          userId: user.id,
+          admissionNumber,
+          enrollmentDate: new Date(createStudentDto.admissionDate),
+          currentSectionId: createStudentDto.sectionId,
+          dateOfBirth: createStudentDto.dateOfBirth
+            ? new Date(createStudentDto.dateOfBirth)
+            : new Date(createStudentDto.dob),
+          gender: createStudentDto.studentRecordGender ?? undefined,
+          address: createStudentDto.studentRecordAddress
+            ? createStudentDto.studentRecordAddress
+            : typeof createStudentDto.address === 'string'
+              ? createStudentDto.address
+              : JSON.stringify(createStudentDto.address),
+          bloodGroup: createStudentDto.bloodGroup ?? undefined,
+          allergies: createStudentDto.allergies ?? [],
+          medicalConditions: createStudentDto.medicalConditions ?? undefined,
+          previousSchool: createStudentDto.previousSchool ?? undefined,
+          specialNeeds: createStudentDto.specialNeeds ?? undefined,
+        };
+
+        const studentRecord = await tx.studentRecord.create({
+          data: studentRecordData,
         });
+
+        // Step D: Parent handling
+        let parentIdToLink: string | null = null;
+
+        if (createStudentDto.parentId) {
+          // Link to existing parent
+          const parent = await tx.parent.findUnique({
+            where: { id: createStudentDto.parentId },
+          });
+          if (!parent) {
+            throw new NotFoundException('Parent not found');
+          }
+          parentIdToLink = parent.id;
+        } else if (createStudentDto.parent) {
+          // Create new parent and link
+          const parentDto = createStudentDto.parent;
+          const { password: parentPassword } = getInitialPassword(
+            'PARENT',
+            process.env.NODE_ENV === 'production',
+          );
+          const parentPasswordHash = await argon2.hash(parentPassword);
+
+          const parentUser = await tx.user.create({
+            data: {
+              email: parentDto.email,
+              passwordHash: parentPasswordHash,
+              role: UserRole.PARENT,
+              isActive: true,
+              mustChangePassword: true,
+            },
+          });
+
+          await tx.profile.create({
+            data: {
+              userId: parentUser.id,
+              firstName: parentDto.firstName,
+              lastName: parentDto.lastName,
+              middleName: parentDto.middleName,
+              contactNumber: parentDto.contactNumber || '0000000000',
+              dob: new Date(),
+              gender: Gender.OTHER,
+              address: {},
+            },
+          });
+
+          const newParent = await tx.parent.create({
+            data: {
+              userId: parentUser.id,
+              relationship: parentDto.relationship,
+              whatsappNumber: parentDto.whatsappNumber,
+              occupation: parentDto.occupation,
+              employer: parentDto.employer,
+              secondaryContactName: parentDto.secondaryContactName,
+              secondaryContactPhone: parentDto.secondaryContactPhone,
+            },
+          });
+          parentIdToLink = newParent.id;
+        }
+
+        if (parentIdToLink) {
+          await tx.studentGuardian.create({
+            data: {
+              studentRecordId: studentRecord.id,
+              parentId: parentIdToLink,
+            },
+          });
+        }
 
         return user;
       });
@@ -108,6 +192,9 @@ export class StudentsService {
       }
       return result;
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       if (error.code === 'P2002') {
         throw new ConflictException('Email already exists');
       }
@@ -196,7 +283,7 @@ export class StudentsService {
         profile: true,
         studentRecord: {
           include: {
-            currentSection: true,
+            currentSection: { include: { class: true } },
           },
         },
       },
@@ -263,10 +350,35 @@ export class StudentsService {
         });
       }
 
-      if (dto.sectionId !== undefined && user.studentRecord) {
+      const studentRecordUpdate: Record<string, unknown> = {};
+      if (dto.sectionId !== undefined)
+        studentRecordUpdate.currentSectionId = dto.sectionId;
+      if (dto.admissionDate !== undefined)
+        studentRecordUpdate.enrollmentDate = new Date(dto.admissionDate);
+      if (dto.bloodGroup !== undefined)
+        studentRecordUpdate.bloodGroup = dto.bloodGroup;
+      if (dto.allergies !== undefined)
+        studentRecordUpdate.allergies = Array.isArray(dto.allergies)
+          ? dto.allergies
+          : dto.allergies
+            ? [dto.allergies]
+            : [];
+      if (dto.medicalConditions !== undefined)
+        studentRecordUpdate.medicalConditions = dto.medicalConditions;
+      if (dto.previousSchool !== undefined)
+        studentRecordUpdate.previousSchool = dto.previousSchool;
+      if (dto.specialNeeds !== undefined)
+        studentRecordUpdate.specialNeeds = dto.specialNeeds;
+      if (dto.studentRecordAddress !== undefined)
+        studentRecordUpdate.address = dto.studentRecordAddress;
+
+      if (
+        Object.keys(studentRecordUpdate).length > 0 &&
+        user.studentRecord
+      ) {
         await tx.studentRecord.update({
           where: { id: user.studentRecord.id },
-          data: { currentSectionId: dto.sectionId },
+          data: studentRecordUpdate,
         });
       }
     });
@@ -304,6 +416,47 @@ export class StudentsService {
       include: {
         currentSection: true,
       },
+    });
+  }
+
+  async linkParent(studentUserId: string, parentId: string) {
+    // parentId can be Parent.id or User.id (for backward compatibility)
+    const parent =
+      (await this.prisma.parent.findUnique({
+        where: { id: parentId },
+      })) ??
+      (await this.prisma.parent.findUnique({
+        where: { userId: parentId },
+      }));
+
+    if (!parent) {
+      throw new NotFoundException('Parent not found');
+    }
+
+    const studentRecord = await this.prisma.studentRecord.findUnique({
+      where: { userId: studentUserId },
+    });
+    if (!studentRecord) {
+      throw new NotFoundException('Student record not found');
+    }
+
+    await this.prisma.studentGuardian.upsert({
+      where: {
+        studentRecordId_parentId: {
+          studentRecordId: studentRecord.id,
+          parentId: parent.id,
+        },
+      },
+      create: {
+        studentRecordId: studentRecord.id,
+        parentId: parent.id,
+      },
+      update: {},
+    });
+
+    return this.prisma.studentRecord.findUnique({
+      where: { id: studentRecord.id },
+      include: { guardians: { include: { parent: true } }, currentSection: true },
     });
   }
 }

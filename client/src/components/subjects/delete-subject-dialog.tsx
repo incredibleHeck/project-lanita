@@ -67,7 +67,7 @@ export function DeleteSubjectDialog({
           <DialogDescription>
             Are you sure you want to delete &quot;{subject?.name}&quot;?
             {hasUsage && (
-              <span className="mt-2 block text-amber-600 dark:text-amber-500">
+              <span className="mt-2 block text-amber-600">
                 Warning: This subject is in use. It will be removed from{" "}
                 {usage.teacherCount > 0 && `${usage.teacherCount} teacher(s)`}
                 {usage.teacherCount > 0 && usage.classCount > 0 && " and "}

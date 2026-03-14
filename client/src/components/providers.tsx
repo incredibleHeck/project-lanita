@@ -1,6 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { useState, useEffect } from "react";
 import { setupAutoSync } from "@/lib/sync-engine";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
@@ -25,10 +26,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <PWAInstallPrompt />
-      <OfflineIndicator />
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="light" forcedTheme="light" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <PWAInstallPrompt />
+        <OfflineIndicator />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

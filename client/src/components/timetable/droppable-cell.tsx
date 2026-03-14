@@ -1,6 +1,7 @@
 'use client';
 
 import { useDroppable } from '@dnd-kit/core';
+import { cn } from '@/lib/utils';
 
 interface DroppableCellProps {
   id: string;
@@ -19,7 +20,13 @@ export function DroppableCell({ id, day, period, children, className }: Droppabl
   return (
     <div
       ref={setNodeRef}
-      className={`${className ?? ''} ${isOver ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      className={cn(
+        'rounded-md min-h-[60px] transition-all duration-200',
+        isOver
+          ? 'border-2 border-solid border-primary bg-primary/5'
+          : 'border border-dashed border-border/50',
+        className ?? ''
+      )}
     >
       {children}
     </div>

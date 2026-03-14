@@ -27,6 +27,12 @@ class AssignSectionDto {
   sectionId: string;
 }
 
+class LinkParentDto {
+  @IsUUID()
+  @IsNotEmpty()
+  parentId: string;
+}
+
 @ApiTags('Students')
 @ApiBearerAuth()
 @Controller('students')
@@ -68,5 +74,11 @@ export class StudentsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   assignSection(@Param('id') id: string, @Body() body: AssignSectionDto) {
     return this.studentsService.assignSection(id, body.sectionId);
+  }
+
+  @Patch(':id/link-parent')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  linkParent(@Param('id') id: string, @Body() body: LinkParentDto) {
+    return this.studentsService.linkParent(id, body.parentId);
   }
 }

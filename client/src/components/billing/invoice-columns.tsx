@@ -32,10 +32,10 @@ export type Invoice = {
 };
 
 const statusConfig = {
-  PAID: { label: "Paid", variant: "default" as const, className: "bg-green-500 hover:bg-green-600" },
-  PARTIAL: { label: "Partial", variant: "secondary" as const, className: "bg-yellow-500 hover:bg-yellow-600 text-black" },
-  PENDING: { label: "Pending", variant: "destructive" as const, className: "" },
-  OVERDUE: { label: "Overdue", variant: "destructive" as const, className: "bg-red-700 hover:bg-red-800" },
+  PAID: { label: "Paid", variant: "success" as const },
+  PARTIAL: { label: "Partial", variant: "warning" as const },
+  PENDING: { label: "Pending", variant: "pending" as const },
+  OVERDUE: { label: "Overdue", variant: "destructive-soft" as const },
 };
 
 export interface CreateInvoiceColumnsOptions {
@@ -79,11 +79,13 @@ export const createInvoiceColumns = (
   {
     accessorKey: "totalAmount",
     header: "Total Amount",
+    meta: { align: "right" as const },
     cell: ({ row }) => formatCurrency(row.getValue("totalAmount")),
   },
   {
     accessorKey: "balance",
     header: "Balance Due",
+    meta: { align: "right" as const },
     cell: ({ row }) => {
       const balance = row.getValue("balance") as number;
       return (
@@ -100,9 +102,7 @@ export const createInvoiceColumns = (
       const status = row.getValue("status") as Invoice["status"];
       const config = statusConfig[status];
       return (
-        <Badge variant={config.variant} className={config.className}>
-          {config.label}
-        </Badge>
+        <Badge variant={config.variant}>{config.label}</Badge>
       );
     },
   },

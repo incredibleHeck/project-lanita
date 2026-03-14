@@ -10,11 +10,18 @@ const Accordion = AccordionPrimitive.Root
 
 const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item> & {
+    variant?: "default" | "card"
+  }
+>(({ className, variant = "default", ...props }, ref) => (
   <AccordionPrimitive.Item
     ref={ref}
-    className={cn("border-b last:border-b-0", className)}
+    className={cn(
+      variant === "card"
+        ? "rounded-lg border border-border/50 bg-card mb-4 last:mb-0 overflow-hidden px-4 [&[data-state=open]]:border-l-4 [&[data-state=open]]:border-l-primary"
+        : "border-b last:border-b-0",
+      className
+    )}
     {...props}
   />
 ))

@@ -29,6 +29,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -248,7 +249,7 @@ export function AddSubjectSheet({
   const sheetContent = (
     <SheetContent
       side="right"
-      className="flex flex-col sm:max-w-md overflow-y-auto"
+      className="flex flex-col sm:max-w-md"
     >
       <SheetHeader>
         <SheetTitle>{isEdit ? "Edit Subject" : "Add Subject"}</SheetTitle>
@@ -256,8 +257,9 @@ export function AddSubjectSheet({
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 px-4 pb-4"
+          className="flex flex-1 min-h-0 flex-col"
         >
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-6 px-4">
           <FormField
             control={form.control}
             name="name"
@@ -461,19 +463,29 @@ export function AddSubjectSheet({
               </FormItem>
             )}
           />
+          </div>
 
-          <Button type="submit" disabled={isPending} className="mt-4">
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEdit ? "Saving..." : "Adding..."}
-              </>
-            ) : isEdit ? (
-              "Save Changes"
-            ) : (
-              "Add Subject"
-            )}
-          </Button>
+          <SheetFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEdit ? "Saving..." : "Adding..."}
+                </>
+              ) : isEdit ? (
+                "Save Changes"
+              ) : (
+                "Add Subject"
+              )}
+            </Button>
+          </SheetFooter>
         </form>
       </Form>
     </SheetContent>

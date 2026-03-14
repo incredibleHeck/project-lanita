@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaystackService } from './paystack.service';
 import { Prisma } from '@prisma/client';
 
 const createMockPrisma = () => {
@@ -31,10 +32,16 @@ describe('BillingService', () => {
 
   beforeEach(async () => {
     mockPrisma = createMockPrisma();
+    const mockPaystack = {
+      initializeTransaction: jest.fn(),
+      verifyTransaction: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BillingService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: PaystackService, useValue: mockPaystack },
       ],
     }).compile();
 

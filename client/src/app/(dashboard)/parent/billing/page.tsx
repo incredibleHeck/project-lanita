@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { RoleGuard } from "@/components/role-guard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -24,6 +25,7 @@ import {
   Clock,
   Users,
   CreditCard,
+  Receipt,
 } from "lucide-react";
 import { PayFeesDialog } from "@/components/billing/pay-fees-dialog";
 import { formatCurrency } from "@/lib/format";
@@ -328,10 +330,11 @@ function BillingContent() {
             </CardHeader>
             <CardContent>
               {statement.invoices.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-4 py-8">
-                  <AlertCircle className="h-12 w-12 text-muted-foreground" />
-                  <p className="text-muted-foreground">No invoices found</p>
-                </div>
+                <EmptyState
+                  icon={<Receipt />}
+                  title="No invoices found"
+                  description="Invoices for your children will appear here"
+                />
               ) : (
                 <BillingDataTable
                   columns={parentInvoiceColumns}
