@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { BillingService } from './billing.service';
+
 @Injectable()
 export class BillingScheduler {
   private readonly logger = new Logger(BillingScheduler.name);
@@ -9,6 +11,7 @@ export class BillingScheduler {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
+    private billingService: BillingService,
   ) {}
 
   @Cron('0 9 * * 1')
@@ -134,5 +137,20 @@ export class BillingScheduler {
     }
 
     this.logger.log(`Sent ${overdue.length} overdue notifications`);
+  }
+
+  /** Reconcile Paystack transactions stuck in PENDING for over 30 minutes. */
+  @Cron('0 */6 * * *')
+  async reconcileStuckPaystackPayments() {
+    this.logger.log('Running stuck Paystack payment reconciliation');
+    try {
+      const result =
+        await this.billingService.reconcilePendingTransactions(30);
+      this.logger.log(
+        `Reconciliation complete: checked=${result.checked} success=${result.success} failed=${result.failed} stillPending=${result.stillPending}`,
+      );
+    } catch (err) {
+      this.logger.error(`Paystack reconciliation failed: ${err}`);
+    }
   }
 }

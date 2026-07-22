@@ -74,6 +74,10 @@ export class AuthService {
 
     const passwordHash = await this.hashData(dto.password);
 
+    // Public signup may only create STUDENT or PARENT (validated on DTO).
+    const role =
+      dto.role === UserRole.PARENT ? UserRole.PARENT : UserRole.STUDENT;
+
     // Create User and Profile in transaction
     const newUser = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -81,7 +85,7 @@ export class AuthService {
           ...(schoolId && { schoolId }),
           email: dto.email,
           passwordHash,
-          role: dto.role || UserRole.STUDENT,
+          role,
         },
       });
 

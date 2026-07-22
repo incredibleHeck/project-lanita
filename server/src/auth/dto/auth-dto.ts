@@ -4,10 +4,14 @@ import {
   IsString,
   MinLength,
   IsEnum,
+  IsIn,
   IsOptional,
   IsStrongPassword,
 } from 'class-validator';
 import { UserRole } from '@prisma/client';
+
+/** Roles allowed via public signup. Privileged roles are invite-only. */
+export const PUBLIC_SIGNUP_ROLES = [UserRole.STUDENT, UserRole.PARENT] as const;
 
 export class AuthDto {
   @IsEmail()
@@ -41,9 +45,11 @@ export class CreateUserDto {
   @IsString()
   lastName: string;
 
+  /** Public signup may only create STUDENT or PARENT accounts. */
   @IsOptional()
   @IsEnum(UserRole)
-  role?: UserRole;
+  @IsIn(PUBLIC_SIGNUP_ROLES)
+  role?: (typeof PUBLIC_SIGNUP_ROLES)[number];
 }
 
 export class ChangePasswordDto {

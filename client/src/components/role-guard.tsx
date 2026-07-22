@@ -57,3 +57,10 @@ function getDefaultRedirectForRole(role: string): string {
       return "/dashboard";
   }
 }
+
+export function isRoleAllowed(userRole: string | undefined, allowedRoles: string[]): boolean {
+  if (!userRole) return false;
+  return allowedRoles.includes(userRole);
+}
+
+export { getDefaultRedirectForRole };

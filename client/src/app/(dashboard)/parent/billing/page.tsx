@@ -121,8 +121,21 @@ function BillingContent() {
 
   useEffect(() => {
     if (searchParams.get("payment") === "callback") {
-      queryClient.invalidateQueries({ queryKey: ["billing", "statement", selectedChildId] });
-      window.history.replaceState({}, "", "/parent/billing");
+      const reference = searchParams.get("reference");
+      const refresh = async () => {
+        if (reference) {
+          try {
+            await axios.get(`/billing/paystack/status/${encodeURIComponent(reference)}`);
+          } catch {
+            // Webhook may still be in flight; invalidate anyway.
+          }
+        }
+        await queryClient.invalidateQueries({
+          queryKey: ["billing", "statement", selectedChildId],
+        });
+        window.history.replaceState({}, "", "/parent/billing");
+      };
+      void refresh();
     }
   }, [searchParams, queryClient, selectedChildId]);
   const { data: statement, isLoading: statementLoading } = useQuery({

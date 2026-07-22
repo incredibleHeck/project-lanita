@@ -83,12 +83,17 @@ interface MobileMoneyDialogProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Demo-only mobile money UI. Disabled in production — use Paystack
+ * (card / MoMo channels) via InvoicePaystackButton instead.
+ */
 export function MobileMoneyDialog({
   open,
   onOpenChange,
   invoice,
   onSuccess,
 }: MobileMoneyDialogProps) {
+  const isProduction = process.env.NODE_ENV === "production";
   const [step, setStep] = useState<"form" | "processing" | "success">("form");
 
   const form = useForm<FormValues>({
@@ -103,8 +108,11 @@ export function MobileMoneyDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("Demo mobile money is disabled in production");
+      }
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      
+
       const response = await axios.post("/billing/payments", {
         invoiceId: invoice?.id,
         amount: data.amount,
@@ -121,6 +129,27 @@ export function MobileMoneyDialog({
       setStep("form");
     },
   });
+
+  if (isProduction) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mobile Money</DialogTitle>
+            <DialogDescription>
+              Direct mobile-money demo is not available. Please pay with
+              Paystack (includes MTN, Vodafone, and AirtelTigo mobile money).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const handleClose = () => {
     setStep("form");

@@ -52,9 +52,17 @@ jobs:
         run: npm run lint
         working-directory: client
 
+      - name: Test client smoke
+        run: npm test
+        working-directory: client
+
       - name: Build client
         run: npm run build
         working-directory: client
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4001
+          NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: pk_test_ci
+          NEXT_PUBLIC_TENANT_ID: DEFAULT
 
   test:
     name: Test
@@ -93,9 +101,9 @@ jobs:
         run: npx prisma generate
         working-directory: server
 
-      - name: Push schema and seed database
+      - name: Apply migrations and seed database
         run: |
-          npx prisma db push --accept-data-loss
+          npx prisma migrate deploy
           npx prisma db seed
         working-directory: server
         env:

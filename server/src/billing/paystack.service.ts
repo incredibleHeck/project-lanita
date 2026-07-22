@@ -20,6 +20,19 @@ interface PaystackInitializeResponse {
   data: PaystackInitializeData;
 }
 
+interface PaystackVerifyData {
+  status: string;
+  reference: string;
+  amount: number;
+  channel?: string;
+}
+
+interface PaystackVerifyResponse {
+  status: boolean;
+  message: string;
+  data: PaystackVerifyData;
+}
+
 @Injectable()
 export class PaystackService {
   private readonly logger = new Logger(PaystackService.name);
@@ -82,6 +95,12 @@ export class PaystackService {
 
       return body.data;
     } catch (error: any) {
+      if (
+        error instanceof BadGatewayException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
       const message =
         error?.response?.data?.message ||
         error?.message ||
@@ -92,6 +111,57 @@ export class PaystackService {
         error?.stack,
       );
       throw new BadGatewayException('Error initializing payment with Paystack');
+    }
+  }
+
+  /**
+   * Verify a Paystack transaction by reference.
+   */
+  async verifyTransaction(reference: string): Promise<PaystackVerifyData> {
+    const secretKey = this.config.get<string>('PAYSTACK_SECRET_KEY');
+
+    if (!secretKey) {
+      this.logger.error('PAYSTACK_SECRET_KEY is not configured');
+      throw new InternalServerErrorException(
+        'Payment provider is not configured',
+      );
+    }
+
+    const url = `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`;
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get<PaystackVerifyResponse>(url, {
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+          },
+        }),
+      );
+
+      const body = response.data;
+      if (!body?.status || !body.data) {
+        throw new BadGatewayException(
+          body?.message || 'Failed to verify payment with Paystack',
+        );
+      }
+
+      return body.data;
+    } catch (error: any) {
+      if (
+        error instanceof BadGatewayException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Error verifying payment with Paystack';
+      this.logger.error(
+        `Error calling Paystack verify endpoint: ${message}`,
+        error?.stack,
+      );
+      throw new BadGatewayException('Error verifying payment with Paystack');
     }
   }
 }

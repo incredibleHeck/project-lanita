@@ -63,16 +63,13 @@ export class PaystackWebhookController {
       const reference = payload.data?.reference;
       const channel = payload.data?.channel ?? 'mobile_money';
 
-      if (reference) {
-        try {
-          await this.billingService.processChargeSuccess(reference, channel);
-        } catch (err) {
-          this.logger.error(
-            `Failed to process charge.success for reference ${reference}`,
-            err,
-          );
-        }
+      if (!reference) {
+        this.logger.warn('charge.success webhook missing reference');
+        return { received: true };
       }
+
+      // Let failures propagate as 5xx so Paystack retries the webhook.
+      await this.billingService.processChargeSuccess(reference, channel);
     }
 
     return { received: true };

@@ -228,8 +228,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** User may not see payment success without reloading; poor UX.
 - **Suggested fix:**
   - After opening Paystack popup, poll a "payment status" endpoint (by reference) or use postMessage from callback page so the parent tab updates. On callback page, show clear success/failure and link back to billing.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** GET /billing/paystack/status/:reference + client confirm polling
 
 ---
 
@@ -240,8 +240,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Failed sends not retried; limited i18n and robustness.
 - **Suggested fix:**
   - Add Bull retry/backoff for failed sends; store failure reason; consider opt-out and channel preference for compliance.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** Bull defaultJobOptions retries; WhatsApp webhook tenant exclude; delivery status updates
 
 ---
 
@@ -252,8 +252,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Compliance risk (e.g. GDPR) and inability to fulfill user requests.
 - **Suggested fix:**
   - Add export of personal data (e.g. parent/student) per request; deletion or anonymization; document consent and retention; document where PII lives and who can access it.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done (minimum: public pages + WhatsApp opt-in + ops runbook; self-service APIs deferred)
+- **Plan:** [docs/PRIVACY-AND-DATA-REQUESTS.md](PRIVACY-AND-DATA-REQUESTS.md), `/privacy`, `/terms`, `Parent.whatsappOptIn`
 
 ---
 
@@ -266,8 +266,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Unpredictable performance or OOM.
 - **Suggested fix:**
   - Add memory/CPU limits per service (e.g. server, client, ml-service) appropriate for your VPS.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** docker-compose.yml deploy.resources per service
 
 ---
 
@@ -278,8 +278,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Misconfiguration on VPS (frontend not reachable via Nginx).
 - **Suggested fix:**
   - Document in VPS-SETUP that WEB_PORT=4000 must be set for production so Nginx and compose match.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** infra/nginx/VPS-SETUP.md (WEB_PORT=4000)
 
 ---
 
@@ -290,8 +290,8 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Brief inconsistency or startup errors until migrations complete.
 - **Suggested fix:**
   - Consider running migrations before starting new containers (e.g. a dedicated migration step or init container), or document and accept the current order.
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** deploy.yml runs migrate deploy before up --build; CI uses migrate deploy
 
 ---
 
@@ -302,17 +302,19 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 - **Impact:** Harder to recover from a bad release.
 - **Suggested fix:**
   - Document a simple rollback (e.g. git revert + redeploy, or keep previous image and re-run compose with it).
-- **Status:** [ ] Not started
-- **Plan:** *Add link or steps*
+- **Status:** [x] Done
+- **Plan:** docs/DEPLOY-ROLLBACK.md; deploy.yml IMAGE_TAG + health smoke
 
 ---
 
 ## Summary table
 
+Statuses below match the detail sections above. Re-check detail blocks when updating this table.
+
 | ID | Title | Priority | Status | Plan |
 |----|-------|----------|--------|------|
-| CRITICAL-1 | JWT fallback secret | Critical | [ ] Not started | *Add link or steps* |
-| CRITICAL-2 | Billing groupBy tenant leak | Critical | [ ] Not started | *Add link or steps* |
+| CRITICAL-1 | JWT fallback secret | Critical | [x] Done | [.cursor/plans/critical-1_jwt_fallback_secret_baf16a4d.plan.md](.cursor/plans/critical-1_jwt_fallback_secret_baf16a4d.plan.md) |
+| CRITICAL-2 | Billing groupBy tenant leak | Critical | [x] Done | [.cursor/plans/critical-2_billing_groupby_tenant_leak_d2084d56.plan.md](.cursor/plans/critical-2_billing_groupby_tenant_leak_d2084d56.plan.md) |
 | HIGH-1 | Attendance batch N+1 and per-record notifications | High | [x] Done | [plan](.cursor/plans/high-1_attendance_batch_n+1_ca332b89.plan.md) |
 | HIGH-2 | Notification processor missing schoolId | High | [x] Done | [.cursor/plans/high-2_notification_processor_schoolid_e3bfc30e.plan.md](.cursor/plans/high-2_notification_processor_schoolid_e3bfc30e.plan.md) |
 | HIGH-3 | Default passwords in production | High | [x] Done | [plan](.cursor/plans/high-3_default_passwords_production_a8c4e2b1.plan.md) |
@@ -325,10 +327,10 @@ This file catalogs every issue identified in the comprehensive audit of the Lani
 | MEDIUM-5 | Auth endpoints need stricter rate limits | Medium | [x] Done | [.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md](.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md) |
 | MEDIUM-6 | Exception filter may log sensitive data | Medium | [x] Done | [.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md](.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md) |
 | LOW-1 | Offline sync UX | Low | [ ] Not started | *Add link or steps* |
-| LOW-2 | Paystack callback / polling | Low | [ ] Not started | *Add link or steps* |
-| LOW-3 | WhatsApp retry and tenant in job | Low | [ ] Not started | *Add link or steps* |
-| LOW-4 | Data privacy compliance | Low | [ ] Not started | *Add link or steps* |
-| INFRA-1 | Docker resource limits | Infra | [ ] Not started | *Add link or steps* |
-| INFRA-2 | Client port and WEB_PORT documentation | Infra | [ ] Not started | *Add link or steps* |
-| INFRA-3 | Migration timing in deploy | Infra | [ ] Not started | *Add link or steps* |
-| INFRA-4 | No rollback path | Infra | [ ] Not started | *Add link or steps* |
+| LOW-2 | Paystack callback / polling | Low | [x] Done | billing status confirm + reconcile |
+| LOW-3 | WhatsApp retry and tenant in job | Low | [x] Done | Bull retries + webhook tenant exclude |
+| LOW-4 | Data privacy compliance | Low | [x] Done (minimum) | docs/PRIVACY-AND-DATA-REQUESTS.md |
+| INFRA-1 | Docker resource limits | Infra | [x] Done | docker-compose.yml deploy.resources |
+| INFRA-2 | Client port and WEB_PORT documentation | Infra | [x] Done | infra/nginx/VPS-SETUP.md |
+| INFRA-3 | Migration timing in deploy | Infra | [x] Done | .github/workflows/deploy.yml |
+| INFRA-4 | No rollback path | Infra | [x] Done | docs/DEPLOY-ROLLBACK.md |

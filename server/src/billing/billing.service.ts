@@ -597,4 +597,145 @@ export class BillingService {
       });
     });
   }
+
+  /**
+   * Confirm a payment by local status and, if still PENDING, verify with Paystack
+   * then apply the same credit path as the webhook.
+   */
+  async confirmPaystackPayment(reference: string, userId: string, role: string) {
+    const transaction = await this.prisma.paymentTransaction.findUnique({
+      where: { reference },
+      include: { invoice: true },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Payment transaction not found');
+    }
+
+    if (role === 'PARENT' && transaction.paidById !== userId) {
+      throw new ForbiddenException('You can only confirm your own payments');
+    }
+
+    if (transaction.status === PaymentTransactionStatus.SUCCESS) {
+      return {
+        reference,
+        status: transaction.status,
+        invoiceId: transaction.invoiceId,
+        amount: transaction.amount,
+      };
+    }
+
+    if (transaction.status === PaymentTransactionStatus.FAILED) {
+      return {
+        reference,
+        status: transaction.status,
+        invoiceId: transaction.invoiceId,
+        amount: transaction.amount,
+      };
+    }
+
+    const verified = await this.paystackService.verifyTransaction(reference);
+    if (verified.status === 'success') {
+      await this.processChargeSuccess(
+        reference,
+        verified.channel ?? 'paystack',
+      );
+      return {
+        reference,
+        status: PaymentTransactionStatus.SUCCESS,
+        invoiceId: transaction.invoiceId,
+        amount: transaction.amount,
+      };
+    }
+
+    if (verified.status === 'failed' || verified.status === 'abandoned') {
+      await this.prisma.paymentTransaction.updateMany({
+        where: { reference, status: PaymentTransactionStatus.PENDING },
+        data: { status: PaymentTransactionStatus.FAILED },
+      });
+      return {
+        reference,
+        status: PaymentTransactionStatus.FAILED,
+        invoiceId: transaction.invoiceId,
+        amount: transaction.amount,
+      };
+    }
+
+    return {
+      reference,
+      status: PaymentTransactionStatus.PENDING,
+      invoiceId: transaction.invoiceId,
+      amount: transaction.amount,
+    };
+  }
+
+  async getStuckPendingTransactions(olderThanMinutes = 30) {
+    const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+    return this.prisma.paymentTransaction.findMany({
+      where: {
+        status: PaymentTransactionStatus.PENDING,
+        createdAt: { lt: cutoff },
+      },
+      select: {
+        id: true,
+        reference: true,
+        amount: true,
+        invoiceId: true,
+        tenantId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+    });
+  }
+
+  /**
+   * Reconcile stuck PENDING rows by verifying with Paystack.
+   * Returns counts of resolved / still-pending / failed.
+   */
+  async reconcilePendingTransactions(olderThanMinutes = 30) {
+    const stuck = await this.getStuckPendingTransactions(olderThanMinutes);
+    let success = 0;
+    let failed = 0;
+    let stillPending = 0;
+
+    for (const row of stuck) {
+      try {
+        const verified = await this.paystackService.verifyTransaction(
+          row.reference,
+        );
+        if (verified.status === 'success') {
+          await this.processChargeSuccess(
+            row.reference,
+            verified.channel ?? 'paystack',
+          );
+          success += 1;
+        } else if (
+          verified.status === 'failed' ||
+          verified.status === 'abandoned'
+        ) {
+          await this.prisma.paymentTransaction.updateMany({
+            where: {
+              reference: row.reference,
+              status: PaymentTransactionStatus.PENDING,
+            },
+            data: { status: PaymentTransactionStatus.FAILED },
+          });
+          failed += 1;
+        } else {
+          stillPending += 1;
+        }
+      } catch {
+        stillPending += 1;
+      }
+    }
+
+    return {
+      checked: stuck.length,
+      success,
+      failed,
+      stillPending,
+    };
+  }
 }

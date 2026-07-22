@@ -70,7 +70,11 @@ export class ParentsService {
 
         // 3. Create Parent record
         const parentRecord = await tx.parent.create({
-          data: { userId: newUser.id },
+          data: {
+            userId: newUser.id,
+            whatsappNumber: createParentDto.phone,
+            whatsappOptIn: createParentDto.whatsappOptIn === true,
+          },
         });
 
         // 4. Link Students via StudentGuardian

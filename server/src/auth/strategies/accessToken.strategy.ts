@@ -2,7 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ACCESS_COOKIE } from '../auth-cookies';
+
+function fromCookieOrBearer(req: Request): string | null {
+  const cookieToken = req?.cookies?.[ACCESS_COOKIE];
+  if (cookieToken) return cookieToken;
+  return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+}
 
 @Injectable()
 export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -11,7 +19,7 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: fromCookieOrBearer,
       secretOrKey: config.get<string>('JWT_ACCESS_SECRET')!,
     });
   }

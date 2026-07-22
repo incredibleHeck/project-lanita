@@ -18,7 +18,10 @@
 # VPS .env (set on server, not via GitHub Secrets):
 # The deploy workflow does not inject env vars. Create .env on the VPS using
 # .env.production.example. Required: JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,
-# POSTGRES_PASSWORD, API_URL, CORS_ORIGIN, WEB_PORT=4000
+# POSTGRES_PASSWORD, API_URL, CORS_ORIGIN, WEB_PORT=4000,
+# NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY (for live payments)
+#
+# Rollback: see docs/DEPLOY-ROLLBACK.md
 # =============================================================================
 
 name: Deploy to VPS
@@ -44,48 +47,54 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            echo "🚀 Starting deployment..."
-            
-            # Navigate to project directory (set VPS_PROJECT_PATH in repo variables if different)
-            cd ${{ vars.VPS_PROJECT_PATH || '/var/www/project-lanita' }} || { echo "❌ Project directory not found"; exit 1; }
-            
-            # Pull latest code from main branch
-            echo "📥 Pulling latest code..."
+            set -e
+            echo "Starting deployment..."
+            cd ${{ vars.VPS_PROJECT_PATH || '/var/www/project-lanita' }} || { echo "Project directory not found"; exit 1; }
+
+            echo "Pulling latest code..."
             git pull origin main
-            
-            # Memory Safeguard for 1GB RAM Free-Tier VPS
-            # Creates 2GB swap file to prevent Out-Of-Memory crashes during Docker builds
-            echo "💾 Setting up swap space..."
+            IMAGE_TAG=$(git rev-parse --short HEAD)
+            export IMAGE_TAG
+            echo "IMAGE_TAG=$IMAGE_TAG"
+
+            echo "Setting up swap space..."
             sudo fallocate -l 2G /swapfile || true
             sudo chmod 600 /swapfile || true
             sudo mkswap /swapfile || true
             sudo swapon /swapfile || true
-            
-            # Show current memory status
             free -h
-            
-            # Stop old containers
-            echo "🐳 Stopping containers..."
-            docker-compose -f docker-compose.yml down --remove-orphans || true
-            
-            # Start database and wait for it to be healthy
-            echo "🗄️ Starting database..."
-            docker-compose -f docker-compose.yml up -d db
-            echo "⏳ Waiting for database to be ready..."
+
+            echo "Stopping app containers (keep db)..."
+            docker compose -f docker-compose.yml stop server client ml-service || true
+
+            echo "Starting database..."
+            docker compose -f docker-compose.yml up -d db
+            echo "Waiting for database..."
             sleep 10
-            
-            # Run migrations before starting app containers (ensures schema is ready)
-            echo "🔄 Running database migrations..."
-            docker-compose -f docker-compose.yml run --rm server npx prisma migrate deploy
-            
-            # Rebuild and start all containers
-            echo "🐳 Rebuilding and starting containers..."
-            docker-compose -f docker-compose.yml up -d --build
-            
-            # Cleanup unused Docker resources to save disk space
-            echo "🧹 Cleaning up unused Docker resources..."
-            docker system prune -f || true
-            
-            # Show running containers
-            echo "✅ Deployment complete! Running containers:"
+
+            echo "Running database migrations before app start..."
+            docker compose -f docker-compose.yml run --rm \
+              -e IMAGE_TAG="$IMAGE_TAG" \
+              server npx prisma migrate deploy
+
+            echo "Rebuilding and starting containers (tagged $IMAGE_TAG)..."
+            IMAGE_TAG="$IMAGE_TAG" docker compose -f docker-compose.yml up -d --build
+
+            echo "Smoke check /health..."
+            for i in 1 2 3 4 5; do
+              if docker compose -f docker-compose.yml exec -T server wget -q --spider http://localhost:3000/health; then
+                echo "Health check OK"
+                break
+              fi
+              sleep 5
+              if [ "$i" = "5" ]; then
+                echo "Health check failed after deploy — see docs/DEPLOY-ROLLBACK.md"
+                exit 1
+              fi
+            done
+
+            echo "Pruning unused images (keeps tagged release images briefly)..."
+            docker image prune -f || true
+
+            echo "Deployment complete:"
             docker ps

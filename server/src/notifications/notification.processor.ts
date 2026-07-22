@@ -45,13 +45,25 @@ export class NotificationProcessor {
         components,
       );
 
+      if (!result.success) {
+        await this.prisma.notificationLog.update({
+          where: { id: log.id },
+          data: {
+            status: 'FAILED',
+            errorMessage: result.error,
+          },
+        });
+        throw new Error(
+          result.error || `WhatsApp send failed for template ${templateName}`,
+        );
+      }
+
       await this.prisma.notificationLog.update({
         where: { id: log.id },
         data: {
-          status: result.success ? 'SENT' : 'FAILED',
+          status: 'SENT',
           whatsappMsgId: result.messageId ?? undefined,
-          sentAt: result.success ? new Date() : undefined,
-          errorMessage: result.error,
+          sentAt: new Date(),
         },
       });
     });

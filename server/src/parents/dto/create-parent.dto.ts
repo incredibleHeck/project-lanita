@@ -1,4 +1,11 @@
-import { IsArray, IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateParentDto {
   @IsEmail()
@@ -21,4 +28,9 @@ export class CreateParentDto {
   @IsString({ each: true })
   @IsNotEmpty()
   studentAdmissionNumbers: string[];
+
+  /** Explicit consent to receive WhatsApp school notifications. */
+  @IsOptional()
+  @IsBoolean()
+  whatsappOptIn?: boolean;
 }

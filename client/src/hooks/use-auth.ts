@@ -27,29 +27,37 @@ export function useAuth(): AuthState {
     }
 
     const storedUser = localStorage.getItem("user");
+    // Cookies may hold tokens even if localStorage was cleared of tokens.
     const accessToken = localStorage.getItem("accessToken");
+    const hasSessionHint = Boolean(storedUser);
 
-    if (storedUser && accessToken) {
+    if (storedUser && (accessToken || hasSessionHint)) {
       try {
         const user = JSON.parse(storedUser) as User;
-        queueMicrotask(() => setState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        }));
+        queueMicrotask(() =>
+          setState({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+          }),
+        );
       } catch {
-        queueMicrotask(() => setState({
+        queueMicrotask(() =>
+          setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          }),
+        );
+      }
+    } else {
+      queueMicrotask(() =>
+        setState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
-        }));
-      }
-    } else {
-      queueMicrotask(() => setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-      }));
+        }),
+      );
     }
   }, []);
 

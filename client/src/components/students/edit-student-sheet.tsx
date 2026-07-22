@@ -395,6 +395,7 @@ export function EditStudentSheet({
       return api.patch(`/students/${student.id}`, payload);
     },
     onSuccess: async (res, data) => {
+      if (!res) return;
       const studentData = res.data;
       const admissionNumber =
         studentData?.studentRecord?.admissionNumber ||

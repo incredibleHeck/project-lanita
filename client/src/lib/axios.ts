@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'X-Tenant-ID': process.env.NEXT_PUBLIC_TENANT_ID || 'DEFAULT',
@@ -10,14 +11,14 @@ const api = axios.create({
 
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (token: string) => void;
+  resolve: (value?: unknown) => void;
   reject: (error: unknown) => void;
 }> = [];
 
-function processQueue(error: unknown, token: string | null) {
+function processQueue(error: unknown, ok: boolean) {
   failedQueue.forEach((prom) => {
-    if (token) {
-      prom.resolve(token);
+    if (ok) {
+      prom.resolve();
     } else {
       prom.reject(error);
     }
@@ -36,6 +37,8 @@ function clearAuthAndRedirect() {
 
 api.interceptors.request.use(
   (config) => {
+    // Prefer httpOnly cookies (sent via withCredentials). Fall back to
+    // Authorization header for transitional clients that still have tokens.
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('accessToken');
       if (token) {
@@ -50,7 +53,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
@@ -62,49 +67,55 @@ api.interceptors.response.use(
     }
 
     if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
-      }).then((token) => {
-        originalRequest.headers.Authorization = `Bearer ${token}`;
-        return api(originalRequest);
-      });
+      }).then(() => api(originalRequest));
     }
 
     originalRequest._retry = true;
     isRefreshing = true;
 
     try {
-      const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-      if (!refreshToken) {
-        clearAuthAndRedirect();
-        return Promise.reject(error);
-      }
+      const refreshToken =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('refreshToken')
+          : null;
 
       const { data } = await axios.post(
         `${api.defaults.baseURL}/auth/refresh`,
         {},
         {
+          withCredentials: true,
           headers: {
-            Authorization: `Bearer ${refreshToken}`,
+            ...(refreshToken
+              ? { Authorization: `Bearer ${refreshToken}` }
+              : {}),
             'X-Tenant-ID': process.env.NEXT_PUBLIC_TENANT_ID || 'DEFAULT',
           },
         },
       );
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+        // Keep localStorage in sync during transition; cookies are primary.
+        if (data.accessToken) {
+          localStorage.setItem('accessToken', data.accessToken);
+        }
+        if (data.refreshToken) {
+          localStorage.setItem('refreshToken', data.refreshToken);
+        }
         if (data.mustChangePassword) {
           window.location.href = '/change-password';
           return Promise.reject(error);
         }
       }
 
-      processQueue(null, data.accessToken);
-      originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+      processQueue(null, true);
+      if (data.accessToken) {
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+      }
       return api(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError, null);
+      processQueue(refreshError, false);
       clearAuthAndRedirect();
       return Promise.reject(refreshError);
     } finally {

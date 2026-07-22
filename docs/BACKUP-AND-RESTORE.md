@@ -42,29 +42,45 @@ Backups are saved to `backups/lanita_YYYY-MM-DD_HHMMSS.sql` (or the directory sp
 
 ## Cron Setup (VPS / Production)
 
-To run daily backups at 2 AM, add a crontab entry:
+Use the wrapper script (loads `.env`, runs backup, optional off-site upload, retention cleanup):
 
 ```bash
+chmod +x scripts/backup-db.sh scripts/cron-backup.sh scripts/restore-db.sh
 crontab -e
 ```
 
-Add:
+Add (daily 2 AM):
 
 ```
-0 2 * * * cd /var/www/project-lanita && POSTGRES_PASSWORD="your-password" ./scripts/backup-db.sh
+0 2 * * * cd /var/www/project-lanita && ./scripts/cron-backup.sh >> /var/log/lanita-backup.log 2>&1
 ```
 
-Replace `your-password` with your actual `POSTGRES_PASSWORD` (or source your `.env` before running). Replace `/var/www/project-lanita` with your actual project directory if different.
+Optional off-site: set `BACKUP_S3_URI=s3://your-bucket/lanita-backups/` in `.env` (requires `aws` CLI or `rclone`).
 
 ### Retention
 
-Keep the last 7 daily backups. Add a cleanup cron job:
+`cron-backup.sh` deletes local dumps older than `BACKUP_RETENTION_DAYS` (default 7).
 
-```
-0 3 * * * find /var/www/project-lanita/backups -name "lanita_*.sql" -mtime +7 -delete
-```
+---
 
-This runs at 3 AM and deletes backups older than 7 days.
+## Restore Drill (required before pilot)
+
+Run once on staging or a throwaway DB to prove backups work:
+
+1. Take a fresh backup: `./scripts/backup-db.sh`
+2. Create a test DB and restore into it (see [Testing a Restore](#testing-a-restore))
+3. Confirm critical tables have rows, e.g.:
+
+   ```bash
+   docker exec -i lanita-db psql -U postgres -d lanita_test -c "SELECT count(*) FROM \"User\";"
+   docker exec -i lanita-db psql -U postgres -d lanita_test -c "SELECT count(*) FROM \"StudentInvoice\";"
+   ```
+
+4. Drop `lanita_test` and record the drill date in your ops log.
+
+Do **not** restore over production without stopping app containers first.
+
+---
 
 ## Object Storage (Production)
 
@@ -96,7 +112,7 @@ To verify a backup without affecting the live database:
 2. Restore into it:
 
    ```bash
-   docker exec -i -e PGPASSWORD=postgres lanita-db psql -U postgres -d lanita_test < backups/lanita_YYYY-MM-DD_HHMMSS.sql
+   docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" lanita-db psql -U postgres -d lanita_test < backups/lanita_YYYY-MM-DD_HHMMSS.sql
    ```
 
 3. Verify data, then drop the test database:

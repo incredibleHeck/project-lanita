@@ -52,12 +52,17 @@ export default function LoginPage() {
       const response = await api.post("/auth/signin", data);
       const { accessToken, refreshToken, mustChangePassword } = response.data;
 
-      // Store tokens in localStorage
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("refreshToken", refreshToken);
+      // httpOnly cookies are set by the server. Keep a non-secret user
+      // snapshot for UI; optionally mirror tokens for transitional clients.
+      if (accessToken) {
+        localStorage.setItem("accessToken", accessToken);
+      }
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
 
-      // Decode JWT to get user info (basic decode without verification)
-      const payload = JSON.parse(atob(accessToken.split(".")[1]));
+      const tokenForPayload = accessToken;
+      const payload = JSON.parse(atob(tokenForPayload.split(".")[1]));
       localStorage.setItem(
         "user",
         JSON.stringify({
@@ -160,9 +165,18 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
+          <div className="mt-4 text-center text-sm text-muted-foreground space-y-2">
             <p>Demo Credentials:</p>
             <p className="font-mono text-xs">admin@heckteck.com / Admin@123</p>
+            <p className="text-xs">
+              <a href="/privacy" className="underline underline-offset-2">
+                Privacy
+              </a>
+              {" · "}
+              <a href="/terms" className="underline underline-offset-2">
+                Terms
+              </a>
+            </p>
           </div>
         </CardContent>
       </Card>

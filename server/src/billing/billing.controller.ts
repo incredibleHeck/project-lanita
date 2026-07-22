@@ -65,6 +65,35 @@ export class BillingController {
     return this.billingService.initializePaystackPayment(dto, req.user.sub);
   }
 
+  @Get('paystack/status/:reference')
+  @Roles(UserRole.PARENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  confirmPaystackStatus(
+    @Param('reference') reference: string,
+    @Request() req: { user: { sub: string; role: string } },
+  ) {
+    return this.billingService.confirmPaystackPayment(
+      reference,
+      req.user.sub,
+      req.user.role,
+    );
+  }
+
+  @Get('paystack/pending')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getStuckPending(@Query('olderThanMinutes') olderThanMinutes?: string) {
+    return this.billingService.getStuckPendingTransactions(
+      olderThanMinutes ? parseInt(olderThanMinutes, 10) : 30,
+    );
+  }
+
+  @Post('paystack/reconcile')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  reconcilePending(@Query('olderThanMinutes') olderThanMinutes?: string) {
+    return this.billingService.reconcilePendingTransactions(
+      olderThanMinutes ? parseInt(olderThanMinutes, 10) : 30,
+    );
+  }
+
   @Get('statement/:studentId')
   @Roles(
     UserRole.PARENT,

@@ -15,6 +15,24 @@ export class NotificationService {
     @InjectQueue('notifications') private notificationQueue: Queue,
   ) {}
 
+  /** Returns false when the parent has not opted in to WhatsApp. */
+  private async parentAllowsWhatsApp(userId: string): Promise<boolean> {
+    const parent = await this.prisma.parent.findUnique({
+      where: { userId },
+      select: { whatsappOptIn: true },
+    });
+    if (!parent) {
+      return true;
+    }
+    if (!parent.whatsappOptIn) {
+      this.logger.debug(
+        `Parent user ${userId} has whatsappOptIn=false — skipping WhatsApp`,
+      );
+      return false;
+    }
+    return true;
+  }
+
   async sendAttendanceAlert(
     schoolId: string,
     parentId: string,
@@ -29,6 +47,8 @@ export class NotificationService {
       );
       return;
     }
+    if (!(await this.parentAllowsWhatsApp(parentId))) return;
+
     let phone = options?.phone;
     let parentFirstName = options?.parentFirstName;
 
@@ -81,6 +101,8 @@ export class NotificationService {
       );
       return;
     }
+    if (!(await this.parentAllowsWhatsApp(parentId))) return;
+
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -122,6 +144,8 @@ export class NotificationService {
       );
       return;
     }
+    if (!(await this.parentAllowsWhatsApp(parentId))) return;
+
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -161,6 +185,8 @@ export class NotificationService {
       );
       return;
     }
+    if (!(await this.parentAllowsWhatsApp(parentId))) return;
+
     const parent = await this.prisma.user.findUnique({
       where: { id: parentId },
       include: { profile: true },
@@ -200,6 +226,8 @@ export class NotificationService {
       );
       return;
     }
+    if (!(await this.parentAllowsWhatsApp(recipientId))) return;
+
     const user = await this.prisma.user.findUnique({
       where: { id: recipientId },
       include: { profile: true },

@@ -366,7 +366,7 @@ function TeacherCourseDetailContent() {
                 }> = [
                   ...sortedLessons.map((lesson) => ({
                     id: lesson.id,
-                    type: lesson.videoUrl ? "video" : "material",
+                    type: (lesson.videoUrl ? "video" : "material") as "video" | "material",
                     title: lesson.title,
                     subtitle: "Added recently",
                   })),

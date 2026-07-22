@@ -1,14 +1,26 @@
-import { Controller, Post, Get, Body, Query, Res } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Res, Logger } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { ApiExcludeController } from '@nestjs/swagger';
+import { PrismaService } from '../prisma/prisma.service';
+
+interface WhatsAppStatus {
+  id?: string;
+  status?: string;
+  timestamp?: string;
+}
 
 @SkipThrottle()
 @ApiExcludeController()
 @Controller('webhooks')
 export class WebhookController {
-  constructor(private config: ConfigService) {}
+  private readonly logger = new Logger(WebhookController.name);
+
+  constructor(
+    private config: ConfigService,
+    private prisma: PrismaService,
+  ) {}
 
   @Get('whatsapp')
   verifyWebhook(@Query() query: Record<string, string>, @Res() res: Response) {
@@ -37,14 +49,52 @@ export class WebhookController {
     return res.sendStatus(200);
   }
 
-  private async processStatusUpdate(value: any) {
-    // Handle delivery/read status updates from WhatsApp
-    // Can update NotificationLog.deliveredAt, readAt based on statuses
-    if (value?.statuses) {
-      for (const status of value.statuses) {
-        // status.id = WhatsApp message ID
-        // status.status = sent | delivered | read
-        // Could update NotificationLog by whatsappMsgId
+  private async processStatusUpdate(value: {
+    statuses?: WhatsAppStatus[];
+  }) {
+    if (!value?.statuses?.length) return;
+
+    for (const status of value.statuses) {
+      if (!status.id || !status.status) continue;
+
+      const deliveredAt =
+        status.status === 'delivered' || status.status === 'read'
+          ? new Date(
+              status.timestamp
+                ? Number(status.timestamp) * 1000
+                : Date.now(),
+            )
+          : undefined;
+      const readAt =
+        status.status === 'read'
+          ? new Date(
+              status.timestamp
+                ? Number(status.timestamp) * 1000
+                : Date.now(),
+            )
+          : undefined;
+
+      try {
+        const updated = await this.prisma.notificationLog.updateMany({
+          where: { whatsappMsgId: status.id },
+          data: {
+            ...(deliveredAt && { deliveredAt }),
+            ...(readAt && { readAt }),
+            ...(status.status === 'failed' && {
+              status: 'FAILED',
+              errorMessage: 'WhatsApp delivery failed',
+            }),
+          },
+        });
+        if (updated.count === 0) {
+          this.logger.debug(
+            `No NotificationLog for WhatsApp message ${status.id}`,
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to update delivery status for ${status.id}: ${err}`,
+        );
       }
     }
   }

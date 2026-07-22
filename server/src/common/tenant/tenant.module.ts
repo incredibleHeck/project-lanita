@@ -22,6 +22,8 @@ export class TenantModule implements NestModule {
         { path: 'api/docs/(.*)', method: RequestMethod.ALL },
         { path: 'api/docs-json', method: RequestMethod.ALL },
         { path: 'billing/paystack/webhook', method: RequestMethod.POST },
+        { path: 'webhooks/whatsapp', method: RequestMethod.GET },
+        { path: 'webhooks/whatsapp', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }

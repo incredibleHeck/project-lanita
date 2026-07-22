@@ -16,7 +16,9 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
-    if (!token) {
+    const user = localStorage.getItem("user");
+    // Cookies may authenticate even if legacy token storage was cleared.
+    if (!token && !user) {
       router.push("/login");
     } else {
       queueMicrotask(() => setIsAuthenticated(true));

@@ -3,12 +3,25 @@ import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { initSentry } from './common/sentry';
 
 async function bootstrap() {
+  initSentry();
+
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const configService = app.get(ConfigService);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: process.env.NODE_ENV === 'production',
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+  app.use(cookieParser());
 
   app.use(
     express.json({
@@ -45,15 +58,6 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Lanita SMS API')
-    .setDescription('HeckTeck School Management System API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
-
   const accessSecret = configService.get<string>('JWT_ACCESS_SECRET');
   const refreshSecret = configService.get<string>('JWT_REFRESH_SECRET');
   if (!accessSecret || !refreshSecret) {
@@ -61,6 +65,23 @@ async function bootstrap() {
       'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set. ' +
         'Add them to your .env file. See .env.example for reference.',
     );
+  }
+
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  const enableSwagger =
+    configService.get<string>('ENABLE_SWAGGER') === 'true' ||
+    (nodeEnv !== 'production' &&
+      configService.get<string>('ENABLE_SWAGGER') !== 'false');
+
+  if (enableSwagger) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Lanita SMS API')
+      .setDescription('HeckTeck School Management System API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
   }
 
   await app.listen(configService.get<number>('PORT', 3001));

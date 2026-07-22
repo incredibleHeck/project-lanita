@@ -14,9 +14,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Build arg for API URL (used at build time for client-side code)
+# Build args for client-side public env (baked into the Next.js bundle)
 ARG NEXT_PUBLIC_API_URL=http://localhost:4001
+ARG NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=
+ARG NEXT_PUBLIC_TENANT_ID=DEFAULT
+ARG NEXT_PUBLIC_SENTRY_DSN=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=$NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+ENV NEXT_PUBLIC_TENANT_ID=$NEXT_PUBLIC_TENANT_ID
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules

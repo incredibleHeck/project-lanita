@@ -46,7 +46,13 @@ export function Header({ className }: HeaderProps) {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const api = (await import("@/lib/axios")).default;
+      await api.post("/auth/logout");
+    } catch {
+      // Clear local session even if the API call fails.
+    }
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");

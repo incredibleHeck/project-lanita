@@ -14,6 +14,39 @@ interface InitializeResponse {
   email: string;
 }
 
+interface PaymentStatusResponse {
+  reference: string;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+  invoiceId: string;
+  amount: number;
+}
+
+async function confirmPaymentOnServer(
+  reference: string,
+  maxAttempts = 8,
+  delayMs = 1500,
+): Promise<PaymentStatusResponse> {
+  let last: PaymentStatusResponse | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data } = await axios.get<PaymentStatusResponse>(
+      `/billing/paystack/status/${encodeURIComponent(reference)}`,
+    );
+    last = data;
+    if (data.status === "SUCCESS" || data.status === "FAILED") {
+      return data;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return (
+    last ?? {
+      reference,
+      status: "PENDING",
+      invoiceId: "",
+      amount: 0,
+    }
+  );
+}
+
 interface PaystackPaymentButtonProps {
   /** Amount in GHS (major units). Paystack expects pesewas, so we multiply by 100. */
   amount: number;
@@ -45,6 +78,7 @@ export function PaystackPaymentButton({
 }: PaystackPaymentButtonProps) {
   const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY as string | undefined;
   const hasOpenedRef = useRef(false);
+  const [confirming, setConfirming] = useState(false);
 
   const config = {
     publicKey: publicKey ?? "",
@@ -56,23 +90,49 @@ export function PaystackPaymentButton({
 
   const initializePayment = usePaystackPayment(config);
 
+  const handlePaystackSuccess = async (ref: unknown) => {
+    setConfirming(true);
+    toast.info("Confirming payment with school...");
+    try {
+      const result = await confirmPaymentOnServer(reference);
+      if (result.status === "SUCCESS") {
+        toast.success("Payment confirmed");
+        onSuccess?.(ref);
+      } else if (result.status === "FAILED") {
+        toast.error("Payment failed. Please try again or contact the school.");
+      } else {
+        toast.info(
+          "Payment received by Paystack. Your invoice will update shortly once confirmed.",
+        );
+        onSuccess?.(ref);
+      }
+    } catch {
+      toast.info(
+        "Payment submitted. Refresh billing shortly if the balance has not updated.",
+      );
+      onSuccess?.(ref);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   useEffect(() => {
     if (autoOpen && reference && publicKey && !hasOpenedRef.current) {
       hasOpenedRef.current = true;
       initializePayment({
         onSuccess: (ref: unknown) => {
-          toast.success("Payment successful");
-          onSuccess?.(ref);
+          void handlePaystackSuccess(ref);
         },
         onClose: () => {
           toast.info("Payment window closed");
         },
       });
     }
-  }, [autoOpen, reference, publicKey, initializePayment, onSuccess]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once per reference
+  }, [autoOpen, reference, publicKey, initializePayment]);
 
   const handleClick = () => {
-    if (disabled) return;
+    if (disabled || confirming) return;
 
     if (!publicKey) {
       toast.error("Payment provider is not configured");
@@ -86,8 +146,7 @@ export function PaystackPaymentButton({
 
     initializePayment({
       onSuccess: (ref: unknown) => {
-        toast.success("Payment successful");
-        onSuccess?.(ref);
+        void handlePaystackSuccess(ref);
       },
       onClose: () => {
         toast.info("Payment window closed");
@@ -95,17 +154,17 @@ export function PaystackPaymentButton({
     });
   };
 
-  if (autoOpen) {
+  if (autoOpen || confirming) {
     return (
       <Button
         type="button"
         variant={variant}
         size={size}
         className={className}
-        disabled={disabled}
+        disabled
       >
         <Loader2 className="h-4 w-4 animate-spin" />
-        Opening...
+        {confirming ? "Confirming..." : "Opening..."}
       </Button>
     );
   }

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { setupAutoSync } from "@/lib/sync-engine";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { initClientSentry } from "@/lib/sentry";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -21,6 +22,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
 
   useEffect(() => {
+    initClientSentry();
     const cleanup = setupAutoSync(30000);
     return cleanup;
   }, []);

@@ -352,6 +352,7 @@ model Parent {
 
   relationship         String?
   whatsappNumber       String?
+  whatsappOptIn        Boolean  @default(false)
   occupation           String?
   employer             String?
   secondaryContactName String?

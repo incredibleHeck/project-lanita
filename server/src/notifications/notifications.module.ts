@@ -14,6 +14,15 @@ import { PrismaModule } from '../prisma/prisma.module';
     HttpModule,
     BullModule.registerQueue({
       name: 'notifications',
+      defaultJobOptions: {
+        attempts: 5,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+      },
     }),
   ],
   controllers: [NotificationsController, WebhookController],

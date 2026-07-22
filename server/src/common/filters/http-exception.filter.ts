@@ -8,6 +8,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Sentry } from '../sentry';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -29,6 +30,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? exResponse
           : (exResponse as any).message || exception.message;
     } else if (exception instanceof Error) {
+      if (process.env.SENTRY_DSN) {
+        Sentry.captureException(exception);
+      }
       const isProduction = process.env.NODE_ENV === 'production';
       if (isProduction) {
         const errorId = crypto.randomUUID();

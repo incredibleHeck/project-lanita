@@ -50,7 +50,11 @@ export class AnnouncementsService {
       return;
     }
 
-    const schoolName = 'Lanita School';
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true },
+    });
+    const schoolName = school?.name ?? 'School';
     const content = `${announcement.title}: ${announcement.content.slice(0, 200)}`;
 
     if (announcement.scope === 'SCHOOL_WIDE') {
