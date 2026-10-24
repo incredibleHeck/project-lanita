@@ -1,19 +1,23 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { RoleGuard } from "@/components/role-guard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StreamPostCard, type StreamAnnouncement } from "@/components/lms/stream-post-card";
 import {
   BookOpen,
   Clipboard,
   Link as LinkIcon,
+  MessageSquare,
   Paperclip,
   Play,
   Users,
+  Video,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -115,13 +119,27 @@ export default function StudentCoursePage() {
 
 function StudentCourseContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const courseId = params.courseId as string;
+  const tabFromUrl = searchParams.get("tab");
+  const defaultTab = tabFromUrl === "classwork" || tabFromUrl === "people" ? tabFromUrl : "stream";
 
   const { data: course, isLoading, isError } = useQuery({
     queryKey: ["lms", "course", courseId],
     queryFn: async () => {
       const response = await api.get<Course>(
         `/lms/courses/${courseId}/classwork`,
+      );
+      return response.data;
+    },
+    enabled: !!courseId,
+  });
+
+  const { data: streamPosts = [], isLoading: streamLoading } = useQuery({
+    queryKey: ["lms", "stream", courseId],
+    queryFn: async () => {
+      const response = await api.get<StreamAnnouncement[]>(
+        `/announcements?courseId=${courseId}`,
       );
       return response.data;
     },
@@ -157,9 +175,12 @@ function StudentCourseContent() {
     (a, b) => a.order - b.order,
   );
 
-  const teacherName = course.teacher?.profile
-    ? `${course.teacher.profile.firstName} ${course.teacher.profile.lastName}`
-    : "Teacher";
+  const now = new Date();
+  const allAssignments = sortedModules.flatMap((m) => (m.assignments ?? []));
+  const upcomingAssignments = allAssignments
+    .filter((a) => a.dueDate && new Date(a.dueDate) > now)
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+    .slice(0, 3);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -171,27 +192,12 @@ function StudentCourseContent() {
         <span className="text-foreground">{course.name}</span>
       </div>
 
-      {/* Hero Header — Google Classroom–style banner */}
-      <div className="h-48 rounded-2xl p-6 relative overflow-hidden bg-[hsl(0,0%,16%)]">
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1' fill='%23ffffff'/%3E%3C/svg%3E")`,
-          }}
-        />
-        <div className="relative z-10 h-full flex flex-col justify-end">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            {course.name}
-          </h1>
-          <p className="text-white/90 text-sm mt-1">
-            Class / Section: {course.subject?.name ?? "—"}
-          </p>
-          <p className="text-white/80 text-sm mt-0.5">{teacherName}</p>
-        </div>
-      </div>
-
-      <Tabs defaultValue="classwork" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="w-full justify-start rounded-lg border border-border/60 bg-muted/50 p-1">
+          <TabsTrigger value="stream" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Stream
+          </TabsTrigger>
           <TabsTrigger value="classwork" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Classwork
@@ -201,6 +207,122 @@ function StudentCourseContent() {
             People
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="stream" className="mt-6">
+          {/* Stream Hero Banner (no Customize, no Class code) */}
+          <div className="relative h-[240px] rounded-xl overflow-hidden bg-gradient-to-r from-blue-600 to-blue-400">
+            <div className="absolute bottom-4 left-6">
+              <h2 className="text-3xl font-bold text-white">{course.name}</h2>
+              <p className="text-lg text-white/90 mt-1">
+                {course.subject?.name ?? "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* Master Grid: 2-column layout (same as teacher) */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
+            {/* Left column: Meet + Upcoming cards */}
+            <div className="col-span-1 md:col-span-3 space-y-4">
+              {/* Meet Card */}
+              <Card className="rounded-lg border border-border/60 shadow-sm">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Video className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium text-foreground">Meet</span>
+                  </div>
+                  <Button variant="secondary" className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0" asChild>
+                    <Link href="#">Join</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Upcoming Card */}
+              <Card className="rounded-lg border border-border/60 shadow-sm">
+                <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-base font-semibold">Upcoming</CardTitle>
+                  <Link
+                    href={`/student/courses/${courseId}?tab=classwork`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    View all
+                  </Link>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  {upcomingAssignments.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      Woohoo, no work due in soon!
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {upcomingAssignments.map((a) => (
+                        <li key={a.id}>
+                          <Link
+                            href={`/student/courses/${courseId}/materials/${a.id}?kind=assignment`}
+                            className="text-sm font-medium text-foreground hover:underline block truncate"
+                          >
+                            {a.title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            Due {a.dueDate ? format(new Date(a.dueDate), "EEE, MMM d 'at' h:mm a") : "—"}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right column: Feed only (no Create Post) */}
+            <div className="col-span-1 md:col-span-9">
+              {streamLoading ? (
+                <div className="space-y-0">
+                  {[1, 2].map((i) => (
+                    <Card key={i} className="py-6 mb-4">
+                      <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-4/5" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : streamPosts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 flex flex-col items-center justify-center py-16 px-6">
+                  <MessageSquare className="h-14 w-14 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-center max-w-sm">
+                    No posts yet. Your teacher may post announcements here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {streamPosts.map((post) => {
+                    const linkHref =
+                      post.isSystemPost && post.linkedEntityId
+                        ? post.linkedEntityType === "ASSIGNMENT"
+                          ? `/student/courses/${courseId}/materials/${post.linkedEntityId}?kind=assignment`
+                          : `/student/courses/${courseId}/materials/${post.linkedEntityId}`
+                        : undefined;
+                    return (
+                      <StreamPostCard
+                        key={post.id}
+                        post={post}
+                        courseId={courseId}
+                        linkHref={linkHref}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
         <TabsContent value="classwork" className="mt-6">
           {sortedModules.length === 0 ? (
@@ -229,7 +351,7 @@ function StudentCourseContent() {
                   ...sortedLessons.map((lesson) => ({
                     id: lesson.id,
                     kind: "lesson" as const,
-                    type: (lesson.videoUrl ? "video" : "material") as "video" | "material",
+type: (lesson.videoUrl ? "video" : "material") as "video" | "material",
                     title: lesson.title,
                     subtitle: "Added recently",
                   })),

@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole } from '@prisma/client';
+import { AnnouncementScope, UserRole } from '@prisma/client';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
 import { NotificationService } from '../notifications/notification.service';
 import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
@@ -15,24 +16,176 @@ export class AnnouncementsService {
   ) {}
 
   async create(dto: CreateAnnouncementDto, authorId: string) {
+    const isCourseStream = !!dto.courseId;
+    let schoolId: string | undefined;
+    if (dto.courseId) {
+      const course = await this.prisma.course.findFirst({
+        where: { id: dto.courseId },
+        select: { schoolId: true },
+      });
+      if (!course) {
+        throw new NotFoundException('Course not found');
+      }
+      schoolId = course.schoolId;
+    } else {
+      schoolId = getTenantSchoolId() ?? undefined;
+    }
+
+    const attachmentsJson =
+      dto.attachments?.length &&
+      Array.isArray(dto.attachments) &&
+      dto.attachments.every((a) => a && typeof a.url === 'string')
+        ? (dto.attachments as { url: string; name?: string }[])
+        : undefined;
+
     const announcement = await this.prisma.announcement.create({
       data: {
-        title: dto.title,
+        title: isCourseStream ? '' : (dto.title ?? ''),
         content: dto.content,
-        scope: dto.scope,
+        scope: isCourseStream ? AnnouncementScope.SCHOOL_WIDE : (dto.scope ?? AnnouncementScope.SCHOOL_WIDE),
         scopeId: dto.scopeId,
+        courseId: dto.courseId,
+        schoolId,
         isPinned: dto.isPinned ?? false,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+        attachments: attachmentsJson ?? undefined,
         authorId,
       },
       include: { author: { include: { profile: true } } },
     });
 
-    if (dto.notifyWhatsApp) {
+    if (dto.notifyWhatsApp && !isCourseStream) {
       await this.notifyRecipients(announcement);
     }
 
     return announcement;
+  }
+
+  /**
+   * Create a system-generated stream post (e.g. when a new assignment or material is created).
+   * Sets isSystemPost: true and optional linkedEntityId + linkedEntityType for navigation.
+   */
+  async createSystemPost(
+    courseId: string,
+    authorId: string,
+    content: string,
+    linkedEntityId?: string,
+    linkedEntityType?: 'ASSIGNMENT' | 'MATERIAL',
+  ) {
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId },
+      select: { schoolId: true },
+    });
+    if (!course) {
+      this.logger.warn(`createSystemPost: course not found ${courseId}`);
+      return null;
+    }
+    return this.prisma.announcement.create({
+      data: {
+        title: '',
+        content,
+        scope: AnnouncementScope.SCHOOL_WIDE,
+        courseId,
+        schoolId: course.schoolId,
+        authorId,
+        isSystemPost: true,
+        linkedEntityId: linkedEntityId ?? undefined,
+        linkedEntityType: linkedEntityType ?? undefined,
+      },
+      include: { author: { include: { profile: true } } },
+    });
+  }
+
+  /** Fetch all announcements for a course (stream tab), ordered by createdAt desc, with author details */
+  async getByCourseId(courseId: string) {
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId },
+      select: { id: true },
+    });
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+    return this.prisma.announcement.findMany({
+      where: { courseId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        author: {
+          include: {
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        _count: { select: { comments: true } },
+      },
+    });
+  }
+
+  /** Create a comment on an announcement (class comment) */
+  async createComment(
+    announcementId: string,
+    authorId: string,
+    dto: CreateCommentDto,
+  ) {
+    const announcement = await this.prisma.announcement.findUnique({
+      where: { id: announcementId },
+      select: { id: true },
+    });
+    if (!announcement) {
+      throw new NotFoundException('Announcement not found');
+    }
+    return this.prisma.announcementComment.create({
+      data: {
+        announcementId,
+        authorId,
+        content: dto.content,
+      },
+      include: {
+        author: {
+          include: {
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /** Get comments for an announcement, chronological order, with author details */
+  async getComments(announcementId: string) {
+    const announcement = await this.prisma.announcement.findUnique({
+      where: { id: announcementId },
+      select: { id: true },
+    });
+    if (!announcement) {
+      throw new NotFoundException('Announcement not found');
+    }
+    return this.prisma.announcementComment.findMany({
+      where: { announcementId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        author: {
+          include: {
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   private async notifyRecipients(announcement: {

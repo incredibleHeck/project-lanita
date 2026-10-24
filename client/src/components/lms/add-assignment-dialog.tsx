@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { typedZodResolver } from "@/lib/zod-resolver";
 import { z } from "zod";
@@ -21,15 +22,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { FileText, Link as LinkIcon, Paperclip } from "lucide-react";
 
 const assignmentSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   dueDate: z.string().optional(),
   maxScore: z.coerce.number().int().min(0).optional(),
+  attachmentUrl: z.union([z.string().url("Enter a valid URL"), z.literal("")]).optional(),
+  formUrl: z.union([z.string().url("Enter a valid URL"), z.literal("")]).optional(),
 });
 
 type AssignmentFormData = z.infer<typeof assignmentSchema>;
@@ -50,6 +55,7 @@ export function AddAssignmentDialog({
   onSuccess,
 }: AddAssignmentDialogProps) {
   const queryClient = useQueryClient();
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const form = useForm<AssignmentFormData>({
     resolver: typedZodResolver(assignmentSchema),
@@ -58,22 +64,37 @@ export function AddAssignmentDialog({
       description: "",
       dueDate: "",
       maxScore: undefined,
+      attachmentUrl: "",
+      formUrl: "",
     },
   });
 
   const mutation = useMutation({
     mutationFn: async (data: AssignmentFormData) => {
+      let attachmentUrl: string | undefined = data.attachmentUrl?.trim() || undefined;
+      if (attachmentFile) {
+        const formData = new FormData();
+        formData.append("file", attachmentFile);
+        const uploadRes = await api.post<{ url: string }>("/lms/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        const base = api.defaults.baseURL ?? "";
+        attachmentUrl = (base.replace(/\/$/, "") + uploadRes.data.url) || undefined;
+      }
       return api.post(`/lms/modules/${moduleId}/assignments`, {
         title: data.title,
         description: data.description || undefined,
         dueDate: data.dueDate || undefined,
         maxScore: data.maxScore,
+        attachmentUrl,
+        formUrl: data.formUrl?.trim() || undefined,
       });
     },
     onSuccess: () => {
       toast.success("Assignment added successfully");
       queryClient.invalidateQueries({ queryKey: ["lms", "course", courseId] });
-      form.reset({ title: "", description: "", dueDate: "", maxScore: undefined });
+      setAttachmentFile(null);
+      form.reset({ title: "", description: "", dueDate: "", maxScore: undefined, attachmentUrl: "", formUrl: "" });
       onOpenChange(false);
       onSuccess?.();
     },
@@ -87,8 +108,9 @@ export function AddAssignmentDialog({
   };
 
   const handleOpenChange = (newOpen: boolean) => {
+    setAttachmentFile(null);
     if (!newOpen) {
-      form.reset({ title: "", description: "", dueDate: "", maxScore: undefined });
+      form.reset({ title: "", description: "", dueDate: "", maxScore: undefined, attachmentUrl: "", formUrl: "" });
     }
     onOpenChange(newOpen);
   };
@@ -173,6 +195,72 @@ export function AddAssignmentDialog({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+              <p className="text-sm font-medium text-foreground">Attach assignment (optional)</p>
+              <div className="space-y-2">
+                <FormLabel className="flex items-center gap-2 text-muted-foreground">
+                  <Paperclip className="h-4 w-4" />
+                  Upload file
+                </FormLabel>
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx,image/jpeg,image/png,image/gif,image/webp,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="cursor-pointer bg-white border-border file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-medium"
+                  onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
+                />
+                {attachmentFile && (
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {attachmentFile.name} ({(attachmentFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </div>
+              <FormField
+                control={form.control}
+                name="attachmentUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      Or paste a document link
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="url"
+                        placeholder="https://... (PDF, Google Doc, etc.)"
+                        className="bg-white border-border"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormDescription>Upload a file above or paste a link. Max 10MB for uploads.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="formUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2 text-muted-foreground">
+                      <LinkIcon className="h-4 w-4" />
+                      Google Form
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="url"
+                        placeholder="https://docs.google.com/forms/..."
+                        className="bg-white border-border"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <DialogFooter>
               <Button
