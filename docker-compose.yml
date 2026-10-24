@@ -32,6 +32,8 @@ services:
       context: ./server
       dockerfile: Dockerfile
     container_name: lanita-server
+    volumes:
+      - server_uploads:/app/uploads
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/lanita
@@ -98,3 +100,4 @@ services:
 volumes:
   postgres_data:
   ml_models:
+  server_uploads:

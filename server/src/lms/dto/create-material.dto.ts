@@ -7,6 +7,7 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export enum MaterialType {
   FILE = 'FILE',
@@ -21,6 +22,7 @@ export class CreateMaterialDto {
 
   @IsString()
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   description?: string;
 
   @IsString()
@@ -28,11 +30,13 @@ export class CreateMaterialDto {
   @IsUUID()
   moduleId: string;
 
-  @IsEnum(MaterialType)
+  @IsEnum(MaterialType, { message: 'materialType must be FILE, YOUTUBE, or LINK' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase() : value))
   materialType: MaterialType;
 
   @IsString()
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   resourceUrl?: string;
 
   @IsInt()

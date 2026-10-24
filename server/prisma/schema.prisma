@@ -198,9 +198,10 @@ model User {
   notificationLogs     NotificationLog[]
   threadsAsParticipantA MessageThread[] @relation("ThreadParticipantA")
   threadsAsParticipantB MessageThread[] @relation("ThreadParticipantB")
-  messagesSent         Message[]
-  announcements        Announcement[]
-  coursesTaught        Course[]
+  messagesSent          Message[]
+  announcements         Announcement[]
+  announcementComments  AnnouncementComment[]
+  coursesTaught         Course[]
    paymentTransactionsPaid PaymentTransaction[] @relation("PaymentTransactionsPaid")
   submissionsGraded    Submission[] @relation("SubmissionGradedBy")
 }
@@ -676,25 +677,46 @@ model Message {
 }
 
 model Announcement {
-  id        String            @id @default(uuid()) @db.Uuid
-  schoolId  String?           @db.Uuid
-  school    School?           @relation(fields: [schoolId], references: [id])
-  title     String
-  content   String
-  scope     AnnouncementScope
-  scopeId   String?            @db.Uuid
-  authorId  String             @db.Uuid
-  isPinned  Boolean            @default(false)
-  publishAt DateTime           @default(now())
-  expiresAt DateTime?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id          String              @id @default(uuid()) @db.Uuid
+  schoolId    String?             @db.Uuid
+  school      School?             @relation(fields: [schoolId], references: [id])
+  courseId    String?             @db.Uuid
+  course      Course?             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  content     String              @db.Text
+  scope       AnnouncementScope
+  scopeId     String?             @db.Uuid
+  authorId    String              @db.Uuid
+  isPinned    Boolean             @default(false)
+  publishAt   DateTime            @default(now())
+  expiresAt   DateTime?
+  attachments     Json?               // Array of { url: string, name?: string } for stream post files/links
+  isSystemPost     Boolean            @default(false)  // auto-generated when assignment/material is created
+  linkedEntityId   String?            @db.Uuid        // Assignment ID or Material ID for system posts
+  linkedEntityType String?            // 'ASSIGNMENT' | 'MATERIAL' for system post navigation
+  createdAt        DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
-  author User @relation(fields: [authorId], references: [id])
+  author   User                  @relation(fields: [authorId], references: [id])
+  comments AnnouncementComment[]
 
   @@index([scope, scopeId])
   @@index([authorId])
   @@index([schoolId])
+  @@index([courseId])
+}
+
+model AnnouncementComment {
+  id             String       @id @default(uuid()) @db.Uuid
+  announcementId String       @db.Uuid
+  announcement   Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  authorId       String       @db.Uuid
+  author         User         @relation(fields: [authorId], references: [id])
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([announcementId])
+  @@index([authorId])
 }
 
 // --- LMS (Courses -> Modules -> Lessons/Materials) ---
@@ -705,6 +727,9 @@ model Course {
   school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name            String
   code            String?
+  classCode       String?       @unique  // 7-char alphanumeric for students to join
+  meetLink        String?       // Google Meet / Zoom URL
+  theme           String?       // Hero theme: blue, green, purple, orange, slate, rose
   description     String?
   subjectId       String        @db.Uuid
   subject         Subject      @relation(fields: [subjectId], references: [id])
@@ -715,6 +740,7 @@ model Course {
   academicYearId  String?       @db.Uuid
   academicYear    AcademicYear? @relation(fields: [academicYearId], references: [id])
   modules         CourseModule[]
+  announcements   Announcement[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -779,18 +805,20 @@ model Material {
 }
 
 model Assignment {
-  id          String       @id @default(uuid()) @db.Uuid
-  title       String
-  description String?      @db.Text
-  dueDate     DateTime?
-  maxScore    Float?
-  moduleId    String       @db.Uuid
-  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  schoolId    String       @db.Uuid
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  submissions Submission[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String
+  description    String?      @db.Text
+  dueDate        DateTime?
+  maxScore       Float?
+  attachmentUrl  String?      // link to assignment document (PDF, Google Doc, etc.) or file URL when upload is available
+  formUrl        String?      // Google Form URL for the assignment
+  moduleId       String       @db.Uuid
+  module         CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  schoolId       String       @db.Uuid
+  school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  submissions    Submission[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([moduleId])
   @@index([schoolId])

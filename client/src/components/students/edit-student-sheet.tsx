@@ -395,10 +395,11 @@ export function EditStudentSheet({
       return api.patch(`/students/${student.id}`, payload);
     },
     onSuccess: async (res, data) => {
-      const studentData = res.data;
+      const studentData = res?.data;
+      if (!studentData) return;
       const admissionNumber =
-        studentData?.studentRecord?.admissionNumber ||
-        studentData?.admissionNumber;
+        studentData.studentRecord?.admissionNumber ||
+        studentData.admissionNumber;
 
       if (data.linkExistingParent && data.existingParentId && admissionNumber) {
         await api.patch(`/students/${studentData.id}/link-parent`, {

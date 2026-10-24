@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { typedZodResolver } from "@/lib/zod-resolver";
 import { z } from "zod";
@@ -69,9 +69,13 @@ export interface AddMaterialDialogModules {
   title: string;
 }
 
+export type MaterialTypeOption = "file" | "youtube" | "link";
+
 interface AddMaterialDialogProps {
   courseId: string;
   modules: AddMaterialDialogModules[];
+  /** When set, dialog opens with this type pre-selected (e.g. from "File" or "Link" in Create dropdown) */
+  defaultMaterialType?: MaterialTypeOption;
   /** Controlled: open state */
   open?: boolean;
   /** Controlled: open state setter */
@@ -84,12 +88,14 @@ interface AddMaterialDialogProps {
 export function AddMaterialDialog({
   courseId,
   modules,
+  defaultMaterialType,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   children,
   onSuccess,
 }: AddMaterialDialogProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const isControlled = controlledOpen !== undefined && controlledOnOpenChange != null;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
   const setOpen = isControlled ? controlledOnOpenChange : setUncontrolledOpen;
@@ -102,27 +108,55 @@ export function AddMaterialDialog({
       title: "",
       description: "",
       moduleId: "",
-      materialType: "file",
+      materialType: defaultMaterialType ?? "file",
       youtubeUrl: "",
       linkUrl: "",
     },
   });
 
+  // When dialog opens, reset form and clear file selection
+  useEffect(() => {
+    if (open) {
+      setSelectedFile(null);
+      form.reset({
+        title: "",
+        description: "",
+        moduleId: "",
+        materialType: defaultMaterialType ?? "file",
+        youtubeUrl: "",
+        linkUrl: "",
+      });
+    }
+  }, [open, defaultMaterialType]);
+
   const materialType = form.watch("materialType");
 
   const mutation = useMutation({
     mutationFn: async (data: MaterialFormData) => {
+      let resourceUrl: string | undefined;
+      if (data.materialType === "youtube") {
+        resourceUrl = data.youtubeUrl?.trim() || undefined;
+      } else if (data.materialType === "link") {
+        resourceUrl = data.linkUrl?.trim() || undefined;
+      } else {
+        // file: upload first, then use returned URL
+        if (!selectedFile) {
+          throw new Error("Please select a file to upload");
+        }
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        const uploadRes = await api.post<{ url: string }>("/lms/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        const base = api.defaults.baseURL ?? "";
+        resourceUrl = (base.replace(/\/$/, "") + uploadRes.data.url) || undefined;
+      }
       const payload = {
         title: data.title,
         description: data.description || undefined,
         moduleId: data.moduleId,
         materialType: data.materialType.toUpperCase() as "FILE" | "YOUTUBE" | "LINK",
-        resourceUrl:
-          data.materialType === "youtube"
-            ? data.youtubeUrl?.trim() || undefined
-            : data.materialType === "link"
-              ? data.linkUrl?.trim() || undefined
-              : undefined,
+        resourceUrl,
       };
       return api.post(
         `/lms/courses/${courseId}/modules/${data.moduleId}/materials`,
@@ -135,17 +169,20 @@ export function AddMaterialDialog({
       resetAndClose();
       onSuccess?.();
     },
-    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
-      toast.error(error.response?.data?.message ?? "Failed to add material");
+    onError: (error: Error & { response?: { data?: { message?: string | string[] } } }) => {
+      const msg = error.response?.data?.message;
+      const text = Array.isArray(msg) ? msg[0] : msg ?? error.message;
+      toast.error(text ?? "Failed to add material");
     },
   });
 
   const resetAndClose = () => {
+    setSelectedFile(null);
     form.reset({
       title: "",
       description: "",
       moduleId: "",
-      materialType: "file",
+      materialType: defaultMaterialType ?? "file",
       youtubeUrl: "",
       linkUrl: "",
     });
@@ -153,7 +190,10 @@ export function AddMaterialDialog({
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) form.reset();
+    if (!next) {
+      setSelectedFile(null);
+      form.reset();
+    }
     setOpen(next);
   };
 
@@ -297,14 +337,31 @@ export function AddMaterialDialog({
             />
 
             {materialType === "file" && (
-              <div className="rounded-lg border-2 border-dashed border-border bg-muted/30 p-8 text-center">
-                <FileText className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-foreground">
-                  Drag and drop a file here, or click to browse
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  File upload will be connected later
-                </p>
+              <div className="rounded-lg border-2 border-dashed border-border bg-muted/30 p-6">
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Upload file
+                  </FormLabel>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <Input
+                        type="file"
+                        accept=".pdf,.doc,.docx,image/jpeg,image/png,image/gif,image/webp,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        className="cursor-pointer bg-white border-border file:mr-2 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-medium"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                      />
+                      {selectedFile && (
+                        <p className="text-xs text-muted-foreground">
+                          Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    PDF, Word, images (JPEG, PNG, GIF, WebP), or text. Max 10MB.
+                  </FormDescription>
+                </FormItem>
               </div>
             )}
 
