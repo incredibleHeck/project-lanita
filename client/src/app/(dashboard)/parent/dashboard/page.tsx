@@ -54,13 +54,13 @@ function ParentDashboardContent() {
     enabled: !!user?.id,
   });
 
-  const children = childrenData?.data || [];
+  const firstChildUserId = childrenData?.data?.[0]?.user?.id;
 
   useEffect(() => {
-    if (!authLoading && !isLoading && children.length > 0) {
-      router.replace(`/parent/child/${children[0].user.id}`);
+    if (!authLoading && !isLoading && firstChildUserId) {
+      router.replace(`/parent/child/${firstChildUserId}`);
     }
-  }, [authLoading, isLoading, children, router]);
+  }, [authLoading, isLoading, firstChildUserId, router]);
 
   if (authLoading || isLoading) {
     return (
@@ -84,7 +84,7 @@ function ParentDashboardContent() {
     );
   }
 
-  if (children.length > 0) {
+  if (firstChildUserId) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />

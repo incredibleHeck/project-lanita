@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { Clipboard, FileText, MoreVertical, Paperclip, Play, Send } from "lucide-react";
+import { Clipboard, FileText, MoreVertical, Play, Send } from "lucide-react";
 import { format } from "date-fns";
 
 export interface StreamAttachment {

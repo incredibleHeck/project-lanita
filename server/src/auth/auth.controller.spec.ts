@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
@@ -14,9 +15,20 @@ describe('AuthController', () => {
       changePassword: jest.fn(),
     };
 
+    const mockConfigService = {
+      get: jest.fn((key: string, defaultValue?: any) => {
+        if (key === 'NODE_ENV') return 'test';
+        if (key === 'COOKIE_DOMAIN') return undefined;
+        return defaultValue;
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: mockAuthService }],
+      providers: [
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ConfigService, useValue: mockConfigService },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);

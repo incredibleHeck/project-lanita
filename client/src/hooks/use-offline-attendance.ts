@@ -45,81 +45,22 @@ export function useOfflineAttendance({
   const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+  const syncNow = useCallback(async () => {
+    if (isSyncing || !isOnline) return;
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  useEffect(() => {
-    const updatePendingCount = async () => {
+    setIsSyncing(true);
+    try {
+      await syncPendingAttendance();
       const count = await offlineDB.getPendingCount();
       setPendingCount(count);
-    };
-    updatePendingCount();
-
-    const interval = setInterval(updatePendingCount, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (isOnline && pendingCount > 0) {
-      syncNow();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- syncNow stable; pendingCount intentionally excluded to avoid sync loops
-  }, [isOnline]);
-
-  const onlineMutation = useMutation({
-    mutationFn: async (records: AttendanceRecord[]) => {
-      const response = await api.post('/attendance/batch', {
-        allocationId,
-        date,
-        records,
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance', allocationId, date] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard'] });
-    },
-  });
-
-  const markAttendance = useCallback(async (records: AttendanceRecord[]) => {
-    if (isOnline) {
-      try {
-        await onlineMutation.mutateAsync(records);
-        
-        const cachedRecords: CachedAttendance[] = records.map((r) => ({
-          id: `${r.studentId}-${allocationId}-${date}`,
-          studentId: r.studentId,
-          allocationId,
-          date,
-          status: r.status,
-          remarks: r.remarks,
-          cachedAt: Date.now(),
-        }));
-        await offlineDB.cachedAttendance.bulkPut(cachedRecords);
-      } catch (error) {
-        if (!navigator.onLine) {
-          await saveOffline(records);
-        } else {
-          throw error;
-        }
-      }
-    } else {
-      await saveOffline(records);
+    } finally {
+      setIsSyncing(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- saveOffline defined below, stable for this callback
-  }, [isOnline, allocationId, date, onlineMutation]);
+  }, [isSyncing, isOnline, queryClient]);
 
-  const saveOffline = async (records: AttendanceRecord[]) => {
+  const saveOffline = useCallback(async (records: AttendanceRecord[]) => {
     const existing = await offlineDB.attendanceQueue
       .where({ allocationId, date })
       .first();
@@ -151,10 +92,85 @@ export function useOfflineAttendance({
       cachedAt: Date.now(),
     }));
     await offlineDB.cachedAttendance.bulkPut(cachedRecords);
-    
+
     const count = await offlineDB.getPendingCount();
     setPendingCount(count);
-  };
+  }, [allocationId, date]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updatePendingCount = async () => {
+      const count = await offlineDB.getPendingCount();
+      setPendingCount(count);
+    };
+    updatePendingCount();
+
+    const interval = setInterval(updatePendingCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (isOnline && pendingCount > 0 && !isSyncing) {
+      const timer = setTimeout(() => {
+        void syncNow();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, pendingCount, isSyncing, syncNow]);
+
+  const onlineMutation = useMutation({
+    mutationFn: async (records: AttendanceRecord[]) => {
+      const response = await api.post('/attendance/batch', {
+        allocationId,
+        date,
+        records,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance', allocationId, date] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard'] });
+    },
+  });
+
+  const markAttendance = useCallback(async (records: AttendanceRecord[]) => {
+    if (isOnline) {
+      try {
+        await onlineMutation.mutateAsync(records);
+
+        const cachedRecords: CachedAttendance[] = records.map((r) => ({
+          id: `${r.studentId}-${allocationId}-${date}`,
+          studentId: r.studentId,
+          allocationId,
+          date,
+          status: r.status,
+          remarks: r.remarks,
+          cachedAt: Date.now(),
+        }));
+        await offlineDB.cachedAttendance.bulkPut(cachedRecords);
+      } catch (error) {
+        if (!navigator.onLine) {
+          await saveOffline(records);
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      await saveOffline(records);
+    }
+  }, [isOnline, allocationId, date, onlineMutation, saveOffline]);
 
   const getStudents = useCallback(async (): Promise<CachedStudent[]> => {
     if (isOnline) {
@@ -198,7 +214,7 @@ export function useOfflineAttendance({
     const pendingRecord = await offlineDB.attendanceQueue
       .where({ allocationId, date })
       .first();
-    
+
     if (pendingRecord) {
       pendingRecord.records.forEach((record) => {
         attendanceMap.set(record.studentId, record);
@@ -243,21 +259,6 @@ export function useOfflineAttendance({
 
     return attendanceMap;
   }, [isOnline, allocationId, date]);
-
-  const syncNow = useCallback(async () => {
-    if (isSyncing || !isOnline) return;
-    
-    setIsSyncing(true);
-    try {
-      await syncPendingAttendance();
-      const count = await offlineDB.getPendingCount();
-      setPendingCount(count);
-      queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard'] });
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [isSyncing, isOnline, queryClient]);
 
   return {
     isOnline,

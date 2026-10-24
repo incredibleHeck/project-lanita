@@ -35,15 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StreamPostCard, type StreamAnnouncement } from "@/components/lms/stream-post-card";
 import { AddModuleDialog } from "@/components/lms/add-module-dialog";
 import { AddLessonDialog } from "@/components/lms/add-lesson-dialog";
 import { AddAssignmentDialog } from "@/components/lms/add-assignment-dialog";
 import { AddMaterialDialog } from "@/components/lms/add-material-dialog";
 import {
-  Award,
   AlertTriangle,
   Bold,
   BookOpen,
@@ -54,7 +52,6 @@ import {
   FileText,
   Folder,
   HardDrive,
-  Image,
   Info,
   Italic,
   Link as LinkIcon,
@@ -69,7 +66,6 @@ import {
   RefreshCw,
   RemoveFormatting,
   Settings,
-  Strikethrough,
   Underline,
   Upload,
   Users,
@@ -293,8 +289,6 @@ function TeacherCourseDetailContent() {
   // Create post (Stream tab) — announcement dialog + inline expanded box
   const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [streamContent, setStreamContent] = useState("");
-  const [streamAttachments, setStreamAttachments] = useState<Array<{ url: string; name?: string }>>([]);
   const [attachments, setAttachments] = useState<
     Array<{ id: string; type: "file" | "link" | "drive" | "youtube"; name: string; url?: string }>
   >([]);
@@ -379,8 +373,6 @@ function TeacherCourseDetailContent() {
       return data;
     },
     onSuccess: () => {
-      setStreamContent("");
-      setStreamAttachments([]);
       setAttachments([]);
       setDialogAttachments([]);
       setAnnouncementDialogOpen(false);
@@ -475,11 +467,6 @@ function TeacherCourseDetailContent() {
     enabled: !!courseId,
   });
 
-  const openLessonDialog = (moduleId: string) => {
-    setActiveModuleId(moduleId);
-    setLessonDialogOpen(true);
-  };
-
   const openAssignmentDialog = (moduleId: string) => {
     setActiveModuleId(moduleId);
     setAssignmentDialogOpen(true);
@@ -514,10 +501,6 @@ function TeacherCourseDetailContent() {
   const sortedModules = [...(course.modules || [])].sort(
     (a, b) => a.order - b.order
   );
-
-  const teacherName = course.teacher?.profile
-    ? `${course.teacher.profile.firstName} ${course.teacher.profile.lastName}`
-    : "Teacher";
 
   const now = new Date();
   const allAssignments = sortedModules.flatMap((m) => m.assignments ?? []);
@@ -1068,8 +1051,6 @@ function TeacherCourseDetailContent() {
                         className="text-slate-600 hover:bg-slate-100"
                         onClick={() => {
                           setIsExpanded(false);
-                          setStreamContent("");
-                          setStreamAttachments([]);
                           setAttachments([]);
                           editor?.commands.clearContent();
                         }}

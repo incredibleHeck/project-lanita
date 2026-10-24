@@ -51,8 +51,11 @@ export class LmsService {
         'Invalid file type. Allowed: PDF, Word, images (JPEG, PNG, GIF, WebP), plain text.',
       );
     }
-    const ext = path.extname(file.originalname) || this.getExtensionFromMime(file.mimetype);
-    const filename = `${randomUUID()}${ext}`;
+    const safeExt = this.getExtensionFromMime(file.mimetype);
+    if (!safeExt) {
+      throw new BadRequestException('Invalid or unsupported file type');
+    }
+    const filename = `${randomUUID()}${safeExt}`;
     const uploadsDir = path.join(process.cwd(), 'uploads');
     fs.mkdirSync(uploadsDir, { recursive: true });
     const filePath = path.join(uploadsDir, filename);
@@ -124,6 +127,7 @@ export class LmsService {
     return this.prisma.course.findMany({
       include: {
         subject: true,
+        academicYear: true,
         teacher: { include: { profile: true } },
         modules: true,
       },
@@ -136,6 +140,7 @@ export class LmsService {
       where: { id },
       include: {
         subject: true,
+        academicYear: true,
         teacher: { include: { profile: true } },
         modules: {
           orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
@@ -290,6 +295,7 @@ export class LmsService {
       where: { id: courseId },
       include: {
         subject: true,
+        academicYear: true,
         teacher: { include: { profile: true } },
         modules: {
           orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
@@ -463,6 +469,7 @@ export class LmsService {
       where: { subjectId: { in: subjectIds } },
       include: {
         subject: true,
+        academicYear: true,
         teacher: { include: { profile: true } },
         modules: { include: { assignments: { select: { id: true } } } },
       },

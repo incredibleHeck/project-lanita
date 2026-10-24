@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "@/lib/axios";
 import { RoleGuard } from "@/components/role-guard";
@@ -12,13 +12,11 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  GraduationCap,
   AlertCircle,
   ArrowLeft,
   Award,
   CalendarCheck,
   Wallet,
-  BookOpen,
   FileText,
   TrendingUp,
   Calendar,
@@ -104,7 +102,6 @@ export default function ParentChildDetailPage() {
 
 function ChildDetailContent() {
   const params = useParams();
-  const router = useRouter();
   const studentUserId = params.id as string;
 
   const { data: childrenData } = useQuery({

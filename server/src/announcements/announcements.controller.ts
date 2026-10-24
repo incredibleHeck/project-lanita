@@ -5,6 +5,7 @@ import {
   Body,
   Query,
   Param,
+  ParseUUIDPipe,
   UseGuards,
   UsePipes,
   Request,
@@ -51,7 +52,7 @@ export class AnnouncementsController {
   }
 
   @Get(':id/comments')
-  getComments(@Param('id') id: string) {
+  getComments(@Param('id', ParseUUIDPipe) id: string) {
     return this.announcementsService.getComments(id);
   }
 

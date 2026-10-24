@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { FileText, Link as LinkIcon, Paperclip, Youtube } from "lucide-react";
+import { Link as LinkIcon, Paperclip, Youtube } from "lucide-react";
 
 const materialSchema = z
   .object({
@@ -127,7 +127,7 @@ export function AddMaterialDialog({
         linkUrl: "",
       });
     }
-  }, [open, defaultMaterialType]);
+  }, [open, defaultMaterialType, form]);
 
   const materialType = form.watch("materialType");
 

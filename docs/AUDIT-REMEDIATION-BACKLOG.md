@@ -326,7 +326,7 @@ Statuses below match the detail sections above. Re-check detail blocks when upda
 | MEDIUM-4 | SETUP.md suggests weak secrets | Medium | [x] Done | [.cursor/plans/medium-4_setup.md_weak_secrets_47e30cb2.plan.md](.cursor/plans/medium-4_setup.md_weak_secrets_47e30cb2.plan.md) |
 | MEDIUM-5 | Auth endpoints need stricter rate limits | Medium | [x] Done | [.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md](.cursor/plans/medium-5_auth_rate_limits_0c6c20bb.plan.md) |
 | MEDIUM-6 | Exception filter may log sensitive data | Medium | [x] Done | [.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md](.cursor/plans/medium-6_exception_filter_sensitive_logging_b8a234c5.plan.md) |
-| LOW-1 | Offline sync UX | Low | [ ] Not started | *Add link or steps* |
+| LOW-1 | Offline sync UX | Low | [x] Done | offline-indicator + retry queue |
 | LOW-2 | Paystack callback / polling | Low | [x] Done | billing status confirm + reconcile |
 | LOW-3 | WhatsApp retry and tenant in job | Low | [x] Done | Bull retries + webhook tenant exclude |
 | LOW-4 | Data privacy compliance | Low | [x] Done (minimum) | docs/PRIVACY-AND-DATA-REQUESTS.md |

@@ -18,7 +18,7 @@ async function bootstrap() {
 
   // Serve uploaded files (e.g. LMS materials) at /uploads
   const uploadsDir = path.join(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadsDir));
+  app.use('/uploads', express.static(uploadsDir, { setHeaders: (res) => { res.setHeader('X-Content-Type-Options', 'nosniff'); } }));
 
   app.use(
     helmet({
