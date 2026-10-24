@@ -39,7 +39,7 @@ export class ResultsService {
     }
   }
 
-  async findAll(filters: { studentId?: string; examId?: string }) {
+  async findAll(filters: { studentId?: string; examId?: string; subjectId?: string }) {
     return this.prisma.result.findMany({
       where: filters,
       include: {

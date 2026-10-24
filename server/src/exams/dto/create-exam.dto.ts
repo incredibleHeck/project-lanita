@@ -29,4 +29,8 @@ export class CreateExamDto {
   @IsUUID()
   @IsNotEmpty()
   academicYearId: string;
+
+  @IsUUID()
+  @IsOptional()
+  termId?: string;
 }

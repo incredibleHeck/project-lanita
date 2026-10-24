@@ -9,9 +9,16 @@ export class ExamsService {
   async create(createExamDto: CreateExamDto) {
     return this.prisma.exam.create({
       data: {
-        ...createExamDto,
+        name: createExamDto.name,
         startDate: new Date(createExamDto.startDate),
         endDate: new Date(createExamDto.endDate),
+        maxScore: createExamDto.maxScore ?? 100,
+        academicYearId: createExamDto.academicYearId,
+        termId: createExamDto.termId,
+      },
+      include: {
+        academicYear: true,
+        term: true,
       },
     });
   }
@@ -23,6 +30,10 @@ export class ExamsService {
       },
       include: {
         academicYear: true,
+        term: true,
+        _count: {
+          select: { results: true },
+        },
       },
     });
   }
@@ -32,6 +43,17 @@ export class ExamsService {
       where: { id },
       include: {
         academicYear: true,
+        term: true,
+        results: {
+          include: {
+            student: {
+              include: {
+                user: { include: { profile: true } },
+              },
+            },
+            subject: true,
+          },
+        },
       },
     });
   }
@@ -40,9 +62,16 @@ export class ExamsService {
     return this.prisma.exam.update({
       where: { id },
       data: {
-        ...data,
-        startDate: data.startDate ? new Date(data.startDate) : undefined,
-        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        ...(data.name && { name: data.name }),
+        ...(data.maxScore !== undefined && { maxScore: data.maxScore }),
+        ...(data.startDate && { startDate: new Date(data.startDate) }),
+        ...(data.endDate && { endDate: new Date(data.endDate) }),
+        ...(data.academicYearId && { academicYearId: data.academicYearId }),
+        ...(data.termId !== undefined && { termId: data.termId }),
+      },
+      include: {
+        academicYear: true,
+        term: true,
       },
     });
   }

@@ -1,5 +1,6 @@
 import {
   Controller,
+  ParseUUIDPipe,
   Get,
   Post,
   Body,
@@ -56,6 +57,12 @@ export class StudentsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
   findAll(@Query() query: StudentsQueryDto) {
     return this.studentsService.findAll(query);
+  }
+
+  @Get('section/:sectionId')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
+  findBySection(@Param('sectionId', ParseUUIDPipe) sectionId: string) {
+    return this.studentsService.findBySection(sectionId);
   }
 
   @Get(':id')

@@ -459,4 +459,33 @@ export class StudentsService {
       include: { guardians: { include: { parent: true } }, currentSection: true },
     });
   }
+
+  async findBySection(sectionId: string) {
+    return this.prisma.studentRecord.findMany({
+      where: { currentSectionId: sectionId },
+      include: {
+        user: {
+          include: {
+            profile: true,
+          },
+        },
+        guardians: {
+          include: {
+            parent: {
+              include: {
+                user: {
+                  include: {
+                    profile: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        admissionNumber: 'asc',
+      },
+    });
+  }
 }

@@ -37,7 +37,12 @@ export class TeachersController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.TEACHER,
+    UserRole.PARENT,
+  )
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -51,7 +56,12 @@ export class TeachersController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.TEACHER,
+    UserRole.PARENT,
+  )
   findOne(@Param('id') id: string) {
     return this.teachersService.findOne(id);
   }

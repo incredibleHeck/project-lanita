@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   Wallet,
   Calendar,
+  CalendarDays,
   MessageSquare,
   Megaphone,
 } from "lucide-react";
@@ -48,9 +49,19 @@ const adminNavigation = [
     icon: BookOpen,
   },
   {
+    name: "Academic Calendar",
+    href: "/dashboard/academic-years",
+    icon: CalendarDays,
+  },
+  {
     name: "Attendance",
     href: "/dashboard/attendance",
     icon: ClipboardCheck,
+  },
+  {
+    name: "Exams & Grading",
+    href: "/dashboard/exams",
+    icon: Award,
   },
   {
     name: "Reports",
@@ -89,6 +100,11 @@ const teacherNavigation = [
     name: "My Classes",
     href: "/teacher/classes",
     icon: BookOpen,
+  },
+  {
+    name: "Grade Entry",
+    href: "/teacher/grades",
+    icon: Award,
   },
   {
     name: "My Courses",

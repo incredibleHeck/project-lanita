@@ -53,8 +53,9 @@ export class ResultsController {
   findAll(
     @Query('studentId') studentId?: string,
     @Query('examId') examId?: string,
+    @Query('subjectId') subjectId?: string,
   ) {
-    return this.resultsService.findAll({ studentId, examId });
+    return this.resultsService.findAll({ studentId, examId, subjectId });
   }
 
   @Get('student/:studentId')

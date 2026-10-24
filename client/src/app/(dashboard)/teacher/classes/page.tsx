@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarX, ClipboardList } from "lucide-react";
+import { CalendarX, ClipboardList, Award } from "lucide-react";
 import Link from "next/link";
 
 interface SubjectAllocation {
@@ -118,11 +118,17 @@ function TeacherClassesContent() {
                 {allocation.section.class.name} - {allocation.section.name}
               </CardDescription>
             </CardHeader>
-            <CardContent className="mt-auto">
+            <CardContent className="mt-auto flex flex-col gap-2">
               <Link href={`/teacher/attendance/${allocation.id}`}>
                 <Button className="w-full">
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Take Attendance
+                </Button>
+              </Link>
+              <Link href={`/teacher/grades?allocationId=${allocation.id}`}>
+                <Button variant="outline" className="w-full">
+                  <Award className="mr-2 h-4 w-4" />
+                  Enter Grades
                 </Button>
               </Link>
             </CardContent>

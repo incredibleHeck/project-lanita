@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -50,11 +51,19 @@ export class MessagingController {
   }
 
   @Post('threads')
-  @Roles(UserRole.TEACHER)
+  @Roles(UserRole.TEACHER, UserRole.PARENT, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   createThread(@Body() dto: CreateThreadDto, @Request() req: any) {
+    const isParent = req.user.role === UserRole.PARENT;
+    const teacherId = isParent ? dto.teacherId : req.user.sub;
+    const parentId = isParent ? req.user.sub : dto.parentId;
+
+    if (!teacherId || !parentId) {
+      throw new BadRequestException('Both teacher and parent must be specified');
+    }
+
     return this.messagingService.getOrCreateThread(
-      req.user.sub,
-      dto.parentId,
+      teacherId,
+      parentId,
       dto.studentId,
     );
   }

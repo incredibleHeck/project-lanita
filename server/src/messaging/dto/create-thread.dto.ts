@@ -1,10 +1,16 @@
-import { IsUUID } from 'class-validator';
+import { IsUUID, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateThreadDto {
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsUUID()
-  parentId: string;
+  @IsOptional()
+  parentId?: string;
+
+  @ApiProperty({ required: false })
+  @IsUUID()
+  @IsOptional()
+  teacherId?: string;
 
   @ApiProperty()
   @IsUUID()

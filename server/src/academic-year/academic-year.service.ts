@@ -24,6 +24,11 @@ export class AcademicYearService {
             endDate: new Date(createAcademicYearDto.endDate),
             isCurrent: true,
           },
+          include: {
+            terms: {
+              orderBy: { startDate: 'asc' },
+            },
+          },
         });
       });
     }
@@ -36,11 +41,23 @@ export class AcademicYearService {
         endDate: new Date(createAcademicYearDto.endDate),
         isCurrent: false, // Explicitly false if not provided or false
       },
+      include: {
+        terms: {
+          orderBy: { startDate: 'asc' },
+        },
+      },
     });
   }
 
   async findAll() {
     return this.prisma.academicYear.findMany({
+      include: {
+        terms: {
+          orderBy: {
+            startDate: 'asc',
+          },
+        },
+      },
       orderBy: {
         startDate: 'desc',
       },
@@ -50,6 +67,13 @@ export class AcademicYearService {
   async findOne(id: string) {
     return this.prisma.academicYear.findUnique({
       where: { id },
+      include: {
+        terms: {
+          orderBy: {
+            startDate: 'asc',
+          },
+        },
+      },
     });
   }
 
@@ -70,6 +94,13 @@ export class AcademicYearService {
         endDate: updateAcademicYearDto.endDate
           ? new Date(updateAcademicYearDto.endDate)
           : undefined,
+      },
+      include: {
+        terms: {
+          orderBy: {
+            startDate: 'asc',
+          },
+        },
       },
     });
   }
@@ -92,6 +123,13 @@ export class AcademicYearService {
       return tx.academicYear.update({
         where: { id },
         data: { isCurrent: true },
+        include: {
+          terms: {
+            orderBy: {
+              startDate: 'asc',
+            },
+          },
+        },
       });
     });
   }
