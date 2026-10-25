@@ -9,6 +9,8 @@ import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { InitializePaystackDto } from './dto/initialize-paystack.dto';
+import { CreateFeeStructureDto } from './dto/create-fee-structure.dto';
+import { UpdateFeeStructureDto } from './dto/update-fee-structure.dto';
 import { PaystackService } from './paystack.service';
 import {
   InvoiceStatus,
@@ -42,6 +44,7 @@ export class BillingService {
   }
 
   async generateTermInvoices(dto: GenerateInvoicesDto) {
+    const schoolId = getTenantSchoolId();
     const term = await this.prisma.term.findUnique({
       where: { id: dto.termId },
       include: { academicYear: true },
@@ -51,17 +54,10 @@ export class BillingService {
       throw new NotFoundException('Term not found');
     }
 
-    const feeWhere: { academicYearId: string; classId?: string | null } = {
-      academicYearId: term.academicYearId,
-    };
-
-    if (dto.classId) {
-      feeWhere.classId = dto.classId;
-    }
-
     const feeStructures = await this.prisma.feeStructure.findMany({
       where: {
         academicYearId: term.academicYearId,
+        ...(schoolId ? { schoolId } : {}),
         OR: dto.classId
           ? [{ classId: dto.classId }, { classId: null }]
           : [{ classId: null }],
@@ -74,7 +70,9 @@ export class BillingService {
       );
     }
 
-    const studentWhere: { currentSection?: { classId: string } } = {};
+    const studentWhere: Prisma.StudentRecordWhereInput = {
+      ...(schoolId ? { schoolId } : {}),
+    };
     if (dto.classId) {
       studentWhere.currentSection = { classId: dto.classId };
     }
@@ -113,7 +111,7 @@ export class BillingService {
       const applicableFees = feeStructures.filter(
         (fee) =>
           fee.classId === null ||
-          fee.classId === student.currentSection.classId,
+          fee.classId === student.currentSection?.classId,
       );
 
       const totalAmount = applicableFees.reduce(
@@ -129,6 +127,7 @@ export class BillingService {
         amountPaid: new Prisma.Decimal(0),
         status: InvoiceStatus.PENDING,
         dueDate,
+        schoolId: schoolId || undefined,
       });
     }
 
@@ -150,6 +149,7 @@ export class BillingService {
   }
 
   async recordPayment(dto: RecordPaymentDto) {
+    const schoolId = getTenantSchoolId();
     const invoice = await this.prisma.studentInvoice.findUnique({
       where: { id: dto.invoiceId },
     });
@@ -179,6 +179,7 @@ export class BillingService {
           amount: paymentAmount,
           method: dto.method,
           reference: dto.reference,
+          schoolId: schoolId || undefined,
         },
       });
 
@@ -287,24 +288,11 @@ export class BillingService {
   }) {
     const { page = 1, limit = 10, status, search, termId } = filters;
     const skip = (page - 1) * limit;
+    const schoolId = getTenantSchoolId();
 
-    const where: {
-      status?: InvoiceStatus;
-      termId?: string;
-      OR?: Array<{
-        invoiceNumber?: { contains: string; mode: 'insensitive' };
-        student?: {
-          user?: {
-            profile?: {
-              OR?: Array<{
-                firstName?: { contains: string; mode: 'insensitive' };
-                lastName?: { contains: string; mode: 'insensitive' };
-              }>;
-            };
-          };
-        };
-      }>;
-    } = {};
+    const where: Prisma.StudentInvoiceWhereInput = {
+      ...(schoolId ? { schoolId } : {}),
+    };
 
     if (status) {
       where.status = status;
@@ -359,8 +347,8 @@ export class BillingService {
         studentId: inv.studentId,
         studentName: `${inv.student.user.profile?.firstName} ${inv.student.user.profile?.lastName}`,
         admissionNumber: inv.student.admissionNumber,
-        class: inv.student.currentSection.class.name,
-        section: inv.student.currentSection.name,
+        class: inv.student.currentSection?.class?.name || 'Unassigned',
+        section: inv.student.currentSection?.name || 'Unassigned',
         term: inv.term.name,
         academicYear: inv.term.academicYear.name,
         totalAmount: inv.totalAmount.toNumber(),
@@ -425,19 +413,145 @@ export class BillingService {
   }
 
   async getTerms() {
+    const schoolId = getTenantSchoolId();
     return this.prisma.term.findMany({
+      where: schoolId ? { academicYear: { schoolId } } : {},
       include: { academicYear: true },
       orderBy: { startDate: 'desc' },
     });
   }
 
   async getFeeStructures(academicYearId?: string) {
-    const where = academicYearId ? { academicYearId } : {};
+    const schoolId = getTenantSchoolId();
+    const where: Prisma.FeeStructureWhereInput = {
+      ...(schoolId ? { schoolId } : {}),
+      ...(academicYearId ? { academicYearId } : {}),
+    };
     return this.prisma.feeStructure.findMany({
       where,
       include: { class: true, academicYear: true },
       orderBy: { name: 'asc' },
     });
+  }
+
+  async createFeeStructure(dto: CreateFeeStructureDto) {
+    const schoolId = getTenantSchoolId();
+    return this.prisma.feeStructure.create({
+      data: {
+        name: dto.name,
+        amount: new Prisma.Decimal(dto.amount),
+        academicYearId: dto.academicYearId,
+        classId: dto.classId || null,
+        schoolId: schoolId || undefined,
+      },
+      include: { class: true, academicYear: true },
+    });
+  }
+
+  async updateFeeStructure(id: string, dto: UpdateFeeStructureDto) {
+    const schoolId = getTenantSchoolId();
+    const existing = await this.prisma.feeStructure.findFirst({
+      where: {
+        id,
+        ...(schoolId ? { schoolId } : {}),
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Fee structure not found');
+    }
+
+    return this.prisma.feeStructure.update({
+      where: { id },
+      data: {
+        ...(dto.name ? { name: dto.name } : {}),
+        ...(dto.amount !== undefined ? { amount: new Prisma.Decimal(dto.amount) } : {}),
+        ...(dto.academicYearId ? { academicYearId: dto.academicYearId } : {}),
+        ...(dto.classId !== undefined ? { classId: dto.classId || null } : {}),
+      },
+      include: { class: true, academicYear: true },
+    });
+  }
+
+  async deleteFeeStructure(id: string) {
+    const schoolId = getTenantSchoolId();
+    const existing = await this.prisma.feeStructure.findFirst({
+      where: {
+        id,
+        ...(schoolId ? { schoolId } : {}),
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Fee structure not found');
+    }
+
+    await this.prisma.feeStructure.delete({
+      where: { id },
+    });
+
+    return { message: 'Fee structure deleted successfully' };
+  }
+
+  async getPaymentReceipt(paymentId: string) {
+    const schoolId = getTenantSchoolId();
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: {
+        invoice: {
+          include: {
+            student: {
+              include: {
+                user: { include: { profile: true } },
+                currentSection: { include: { class: true } },
+              },
+            },
+            term: { include: { academicYear: true } },
+          },
+        },
+        school: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    const invoice = payment.invoice;
+
+    return {
+      receiptNumber: payment.receiptNumber,
+      paymentDate: payment.paymentDate,
+      amount: payment.amount.toNumber(),
+      method: payment.method,
+      reference: payment.reference,
+      invoice: {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        term: invoice.term.name,
+        academicYear: invoice.term.academicYear.name,
+        totalAmount: invoice.totalAmount.toNumber(),
+        amountPaid: invoice.amountPaid.toNumber(),
+        balance: invoice.totalAmount.sub(invoice.amountPaid).toNumber(),
+        status: invoice.status,
+      },
+      student: {
+        id: invoice.student.id,
+        admissionNumber: invoice.student.admissionNumber,
+        name: `${invoice.student.user.profile?.firstName} ${invoice.student.user.profile?.lastName}`,
+        class: invoice.student.currentSection?.class?.name || 'Unassigned',
+        section: invoice.student.currentSection?.name || 'Unassigned',
+      },
+      school: payment.school || {
+        name: 'Lanita International School',
+        code: 'LIS',
+        contactEmail: 'accounts@lanita.edu',
+        contactPhone: '+234 800 000 0000',
+      },
+    };
   }
 
   async verifyParentAccess(

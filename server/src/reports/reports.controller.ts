@@ -41,6 +41,10 @@ export class ReportsController {
     @Request() req?: { user?: { sub: string; role?: string } },
   ) {
     const user = req?.user;
+    if (user?.role === UserRole.STUDENT && user.sub !== studentId) {
+      throw new ForbiddenException('You can only view your own report card');
+    }
+
     if (user?.role === UserRole.PARENT) {
       const hasAccess = await this.portalService.verifyParentAccess(
         user.sub,

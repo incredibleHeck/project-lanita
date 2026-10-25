@@ -5,6 +5,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { GraduationCap } from "lucide-react";
 
 export interface ReportCardData {
+  school?: {
+    name?: string;
+    code?: string;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+    address?: string | null;
+  };
   student: {
     id: string;
     name: string;
@@ -27,6 +34,7 @@ export interface ReportCardData {
     total: number;
     average: number;
   };
+  aiComment?: string | null;
 }
 
 function getGradeRemark(grade: string): string {
@@ -71,22 +79,27 @@ interface ReportCardProps {
 }
 
 export function ReportCard({ report }: ReportCardProps) {
+  const schoolName = report.school?.name || "Lanita International School";
+  const schoolAddress = report.school?.address || "123 Education Avenue, Knowledge City";
+  const schoolPhone = report.school?.contactPhone || "(+234) 800-000-0000";
+  const schoolEmail = report.school?.contactEmail || "admin@lanita.edu";
+
   return (
     <Card className="max-w-4xl mx-auto p-8 bg-white text-black print:shadow-none print:border-none print:p-0 print:bg-white">
       {/* School Header */}
       <div className="text-center border-b-2 border-black pb-6 mb-6">
         <h1 className="text-3xl font-serif font-bold tracking-wide">
-          HeckTeck International School
+          {schoolName}
         </h1>
         <p className="text-sm mt-1">
-          123 Education Avenue, Knowledge City, KC 12345
+          {schoolAddress}
         </p>
         <p className="text-sm">
-          Tel: (123) 456-7890 | Email: info@hecktech.edu
+          Tel: {schoolPhone} | Email: {schoolEmail}
         </p>
         <div className="mt-4">
           <h2 className="text-xl font-semibold uppercase tracking-widest">
-            Terminal Report Card
+            Terminal Academic Report
           </h2>
           <p className="text-sm text-foreground mt-1">
             {report.exam} - {report.academicYear}
@@ -114,7 +127,7 @@ export function ReportCard({ report }: ReportCardProps) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-foreground/80">Admission No.</p>
-            <p className="font-medium">{report.student.admissionNumber}</p>
+            <p className="font-medium font-mono">{report.student.admissionNumber}</p>
           </div>
           <div>
             <p className="text-sm text-foreground/80">Class</p>
@@ -238,6 +251,16 @@ export function ReportCard({ report }: ReportCardProps) {
             <p className="text-sm text-foreground/80">Out of</p>
             <p className="text-2xl font-bold">{report.results.length * 100}</p>
           </div>
+        </div>
+      )}
+
+      {/* Teacher / AI Remark */}
+      {report.aiComment && (
+        <div className="mb-6 p-4 rounded-lg bg-muted/40 border">
+          <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+            Teacher & Form Master Evaluation
+          </h4>
+          <p className="text-sm italic text-foreground">&quot;{report.aiComment}&quot;</p>
         </div>
       )}
 

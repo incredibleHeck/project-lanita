@@ -2,17 +2,20 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { Prisma } from '@prisma/client';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
 @Injectable()
 export class SubjectsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createSubjectDto: CreateSubjectDto) {
+    const schoolId = getTenantSchoolId();
     try {
       const { subjectType, preferredRoomIds, ...rest } = createSubjectDto;
       return await this.prisma.subject.create({
         data: {
           ...rest,
+          ...(schoolId && { schoolId }),
           subjectType: subjectType ?? 'CORE',
           isElective: subjectType === 'ELECTIVE',
           preferredRoomIds: preferredRoomIds ?? undefined,
@@ -32,7 +35,11 @@ export class SubjectsService {
   }
 
   async findAll() {
+    const schoolId = getTenantSchoolId();
     const subjects = await this.prisma.subject.findMany({
+      where: {
+        ...(schoolId && { schoolId }),
+      },
       include: {
         requiredRoom: true,
       },
@@ -62,8 +69,12 @@ export class SubjectsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.subject.findUnique({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.subject.findFirst({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       include: { requiredRoom: true },
     });
   }
@@ -85,6 +96,7 @@ export class SubjectsService {
   }
 
   async update(id: string, data: Partial<CreateSubjectDto>) {
+    const schoolId = getTenantSchoolId();
     const { subjectType, preferredRoomIds, ...rest } = data;
     const dataToUpdate: Prisma.SubjectUpdateInput = {
       ...rest,
@@ -94,15 +106,22 @@ export class SubjectsService {
       }),
       ...(preferredRoomIds !== undefined && { preferredRoomIds }),
     };
-    return this.prisma.subject.update({
-      where: { id },
+    return this.prisma.subject.updateMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       data: dataToUpdate,
     });
   }
 
   async remove(id: string) {
-    return this.prisma.subject.delete({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.subject.deleteMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
     });
   }
 }

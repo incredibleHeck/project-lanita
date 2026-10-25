@@ -58,6 +58,7 @@ export class TimetableController {
     UserRole.SUPER_ADMIN,
     UserRole.TEACHER,
     UserRole.STUDENT,
+    UserRole.PARENT,
   )
   getSectionTimetable(
     @Param('sectionId') sectionId: string,

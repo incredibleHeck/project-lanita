@@ -9,11 +9,12 @@ import {
   Query,
   Patch,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentsQueryDto } from './dto/students-query.dto';
+import { PromoteStudentsDto } from './dto/promote-students.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ABACGuard } from '../common/guards/abac.guard';
@@ -47,6 +48,13 @@ export class StudentsController {
     return this.studentsService.create(createStudentDto);
   }
 
+  @Post('promote')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Bulk promote, repeat, or graduate students across sections/sessions' })
+  promoteStudents(@Body() dto: PromoteStudentsDto) {
+    return this.studentsService.promoteStudents(dto);
+  }
+
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
@@ -71,6 +79,7 @@ export class StudentsController {
     UserRole.SUPER_ADMIN,
     UserRole.TEACHER,
     UserRole.PARENT,
+    UserRole.STUDENT,
   )
   @ABAC('OWN_STUDENTS', 'OWN_CHILDREN')
   findOne(@Param('id') id: string) {

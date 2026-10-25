@@ -1,19 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassDto } from './dto/create-class.dto';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
 @Injectable()
 export class ClassesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createClassDto: CreateClassDto) {
+    const schoolId = getTenantSchoolId();
     return this.prisma.class.create({
-      data: createClassDto,
+      data: {
+        ...createClassDto,
+        ...(schoolId && { schoolId }),
+      },
     });
   }
 
   async findAll() {
+    const schoolId = getTenantSchoolId();
     return this.prisma.class.findMany({
+      where: {
+        ...(schoolId && { schoolId }),
+      },
       include: {
         _count: {
           select: { sections: true },
@@ -24,8 +33,12 @@ export class ClassesService {
   }
 
   async findOne(id: string, includeSections = false) {
-    return this.prisma.class.findUnique({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.class.findFirst({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       include: {
         sections: includeSections,
       },
@@ -33,15 +46,23 @@ export class ClassesService {
   }
 
   async update(id: string, data: Partial<CreateClassDto>) {
-    return this.prisma.class.update({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.class.updateMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       data,
     });
   }
 
   async remove(id: string) {
-    return this.prisma.class.delete({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.class.deleteMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
     });
   }
 }

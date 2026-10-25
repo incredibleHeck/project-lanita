@@ -8,6 +8,8 @@ import {
   TrendingDown,
   AlertCircle,
   Search,
+  Settings2,
+  FilePlus2,
 } from "lucide-react";
 import api from "@/lib/axios";
 import { formatCurrency } from "@/lib/format";
@@ -25,6 +27,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BillingDataTable } from "@/components/billing/billing-data-table";
 import { createInvoiceColumns, Invoice } from "@/components/billing/invoice-columns";
 import { RecordPaymentDialog } from "@/components/billing/record-payment-dialog";
+import { GenerateInvoicesDialog } from "@/components/billing/generate-invoices-dialog";
+import { FeeStructuresDialog } from "@/components/billing/fee-structures-dialog";
+import { PaymentReceiptDialog } from "@/components/billing/payment-receipt-dialog";
 
 interface BillingStats {
   totalExpected: number;
@@ -53,7 +58,11 @@ export default function BillingPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [feeStructuresDialogOpen, setFeeStructuresDialogOpen] = useState(false);
+  const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery<BillingStats>({
     queryKey: ["billing-stats"],
@@ -80,7 +89,12 @@ export default function BillingPage() {
 
   const handleRecordPayment = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setDialogOpen(true);
+    setPaymentDialogOpen(true);
+  };
+
+  const handlePaymentRecorded = (paymentId: string) => {
+    setReceiptPaymentId(paymentId);
+    setReceiptDialogOpen(true);
   };
 
   const columns = useMemo(
@@ -95,13 +109,33 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
-        <Wallet className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Financial Operations</h1>
-          <p className="text-muted-foreground">
-            Manage student invoices and payments
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Wallet className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">Financial Operations</h1>
+            <p className="text-muted-foreground">
+              Manage student fee structures, invoices, payments, and receipts
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setFeeStructuresDialogOpen(true)}
+          >
+            <Settings2 className="h-4 w-4" />
+            Fee Structures
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => setGenerateDialogOpen(true)}
+          >
+            <FilePlus2 className="h-4 w-4" />
+            Generate Invoices
+          </Button>
         </div>
       </div>
 
@@ -247,8 +281,25 @@ export default function BillingPage() {
 
       <RecordPaymentDialog
         invoice={selectedInvoice}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onPaymentRecorded={handlePaymentRecorded}
+      />
+
+      <GenerateInvoicesDialog
+        open={generateDialogOpen}
+        onOpenChange={setGenerateDialogOpen}
+      />
+
+      <FeeStructuresDialog
+        open={feeStructuresDialogOpen}
+        onOpenChange={setFeeStructuresDialogOpen}
+      />
+
+      <PaymentReceiptDialog
+        paymentId={receiptPaymentId}
+        open={receiptDialogOpen}
+        onOpenChange={setReceiptDialogOpen}
       />
     </div>
   );

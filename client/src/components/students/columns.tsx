@@ -37,6 +37,21 @@ export type Student = {
         name?: string;
       };
     } | null;
+    guardians?: Array<{
+      id: string;
+      relationship: string;
+      parent: {
+        id: string;
+        user: {
+          email?: string;
+          profile?: {
+            firstName?: string;
+            lastName?: string;
+            contactNumber?: string;
+          };
+        };
+      };
+    }>;
   } | null;
 };
 

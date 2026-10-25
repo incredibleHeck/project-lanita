@@ -30,6 +30,7 @@ export class ReportsService {
       include: {
         user: { include: { profile: true } },
         currentSection: { include: { class: true } },
+        school: true,
       },
     });
 
@@ -136,6 +137,17 @@ export class ReportsService {
         totalInClass: totalStudents,
       },
       aiComment,
+      school: (studentRecord as any).school ? {
+        name: (studentRecord as any).school.name,
+        code: (studentRecord as any).school.code,
+        contactEmail: (studentRecord as any).school.contactEmail,
+        contactPhone: (studentRecord as any).school.contactPhone,
+      } : {
+        name: 'Lanita International School',
+        code: 'LIS',
+        contactEmail: 'admin@lanita.edu',
+        contactPhone: '+234 800 000 0000',
+      },
     };
   }
 

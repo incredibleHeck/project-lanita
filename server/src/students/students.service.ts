@@ -8,9 +8,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentsQueryDto } from './dto/students-query.dto';
+import { PromoteStudentsDto, PromotionAction } from './dto/promote-students.dto';
 import { UserEntity } from '../common/entities/user.entity';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { getInitialPassword } from '../common/utils/password.utils';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 import * as argon2 from 'argon2';
 import { Gender, UserRole } from '@prisma/client';
 
@@ -19,15 +21,17 @@ export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
   private async generateAdmissionNumber(): Promise<string> {
+    const schoolId = getTenantSchoolId();
     const year = new Date().getFullYear();
     const prefix = `STU-${year}`;
 
-    // Find the last student record for this year
+    // Find the last student record for this year and school
     const lastStudent = await this.prisma.studentRecord.findFirst({
       where: {
         admissionNumber: {
           startsWith: prefix,
         },
+        ...(schoolId && { schoolId }),
       },
       orderBy: {
         admissionNumber: 'desc',
@@ -49,6 +53,7 @@ export class StudentsService {
   }
 
   async create(createStudentDto: CreateStudentDto) {
+    const schoolId = getTenantSchoolId();
     const admissionNumber = await this.generateAdmissionNumber();
     const { password, mustChange } = getInitialPassword(
       'STUDENT',
@@ -66,6 +71,7 @@ export class StudentsService {
             role: UserRole.STUDENT,
             isActive: true,
             mustChangePassword: mustChange,
+            ...(schoolId && { schoolId }),
           },
         });
 
@@ -110,6 +116,7 @@ export class StudentsService {
           medicalConditions: createStudentDto.medicalConditions ?? undefined,
           previousSchool: createStudentDto.previousSchool ?? undefined,
           specialNeeds: createStudentDto.specialNeeds ?? undefined,
+          ...(schoolId && { schoolId }),
         };
 
         const studentRecord = await tx.studentRecord.create({
@@ -121,8 +128,11 @@ export class StudentsService {
 
         if (createStudentDto.parentId) {
           // Link to existing parent
-          const parent = await tx.parent.findUnique({
-            where: { id: createStudentDto.parentId },
+          const parent = await tx.parent.findFirst({
+            where: {
+              id: createStudentDto.parentId,
+              ...(schoolId && { schoolId }),
+            },
           });
           if (!parent) {
             throw new NotFoundException('Parent not found');
@@ -144,6 +154,7 @@ export class StudentsService {
               role: UserRole.PARENT,
               isActive: true,
               mustChangePassword: true,
+              ...(schoolId && { schoolId }),
             },
           });
 
@@ -169,6 +180,7 @@ export class StudentsService {
               employer: parentDto.employer,
               secondaryContactName: parentDto.secondaryContactName,
               secondaryContactPhone: parentDto.secondaryContactPhone,
+              ...(schoolId && { schoolId }),
             },
           });
           parentIdToLink = newParent.id;
@@ -179,6 +191,7 @@ export class StudentsService {
             data: {
               studentRecordId: studentRecord.id,
               parentId: parentIdToLink,
+              ...(schoolId && { schoolId }),
             },
           });
         }
@@ -203,12 +216,14 @@ export class StudentsService {
   }
 
   async findAll(dto: StudentsQueryDto): Promise<PaginatedResult<UserEntity>> {
+    const schoolId = getTenantSchoolId();
     const page = dto.page ?? 1;
     const limit = dto.limit ?? 10;
     const skip = (page - 1) * limit;
 
     const whereClause: any = {
       role: UserRole.STUDENT,
+      ...(schoolId && { schoolId }),
     };
 
     if (dto.sectionId) {
@@ -255,7 +270,11 @@ export class StudentsService {
           profile: true,
           studentRecord: {
             include: {
-              currentSection: true,
+              currentSection: {
+                include: {
+                  class: true,
+                },
+              },
             },
           },
         },
@@ -277,13 +296,30 @@ export class StudentsService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       include: {
         profile: true,
         studentRecord: {
           include: {
             currentSection: { include: { class: true } },
+            guardians: {
+              include: {
+                parent: {
+                  include: {
+                    user: {
+                      include: {
+                        profile: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -295,8 +331,12 @@ export class StudentsService {
   }
 
   async update(id: string, dto: UpdateStudentDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       include: { profile: true, studentRecord: true },
     });
 
@@ -313,6 +353,7 @@ export class StudentsService {
         where: {
           email: dto.email,
           id: { not: id },
+          ...(schoolId && { schoolId }),
         },
       });
       if (existing) {
@@ -387,21 +428,23 @@ export class StudentsService {
   }
 
   async assignSection(studentUserId: string, sectionId: string) {
-    // Validate Section Exists
-    const section = await this.prisma.section.findUnique({
-      where: { id: sectionId },
+    const schoolId = getTenantSchoolId();
+    const section = await this.prisma.section.findFirst({
+      where: {
+        id: sectionId,
+        ...(schoolId && { schoolId }),
+      },
     });
 
     if (!section) {
       throw new NotFoundException('Section not found');
     }
 
-    // Find Student Record via User ID (assuming studentUserId is User ID)
-    // Or is it StudentRecord ID?
-    // "GET /students/:id" usually refers to User ID in this context as findAll returns Users.
-    // I'll assume User ID.
-    const studentRecord = await this.prisma.studentRecord.findUnique({
-      where: { userId: studentUserId },
+    const studentRecord = await this.prisma.studentRecord.findFirst({
+      where: {
+        userId: studentUserId,
+        ...(schoolId && { schoolId }),
+      },
     });
 
     if (!studentRecord) {
@@ -420,21 +463,21 @@ export class StudentsService {
   }
 
   async linkParent(studentUserId: string, parentId: string) {
-    // parentId can be Parent.id or User.id (for backward compatibility)
+    const schoolId = getTenantSchoolId();
     const parent =
-      (await this.prisma.parent.findUnique({
-        where: { id: parentId },
+      (await this.prisma.parent.findFirst({
+        where: { id: parentId, ...(schoolId && { schoolId }) },
       })) ??
-      (await this.prisma.parent.findUnique({
-        where: { userId: parentId },
+      (await this.prisma.parent.findFirst({
+        where: { userId: parentId, ...(schoolId && { schoolId }) },
       }));
 
     if (!parent) {
       throw new NotFoundException('Parent not found');
     }
 
-    const studentRecord = await this.prisma.studentRecord.findUnique({
-      where: { userId: studentUserId },
+    const studentRecord = await this.prisma.studentRecord.findFirst({
+      where: { userId: studentUserId, ...(schoolId && { schoolId }) },
     });
     if (!studentRecord) {
       throw new NotFoundException('Student record not found');
@@ -450,6 +493,7 @@ export class StudentsService {
       create: {
         studentRecordId: studentRecord.id,
         parentId: parent.id,
+        ...(schoolId && { schoolId }),
       },
       update: {},
     });
@@ -461,8 +505,12 @@ export class StudentsService {
   }
 
   async findBySection(sectionId: string) {
+    const schoolId = getTenantSchoolId();
     return this.prisma.studentRecord.findMany({
-      where: { currentSectionId: sectionId },
+      where: {
+        currentSectionId: sectionId,
+        ...(schoolId && { schoolId }),
+      },
       include: {
         user: {
           include: {
@@ -487,5 +535,52 @@ export class StudentsService {
         admissionNumber: 'asc',
       },
     });
+  }
+
+  async promoteStudents(dto: PromoteStudentsDto) {
+    const schoolId = getTenantSchoolId();
+    let promoted = 0;
+    let repeated = 0;
+    let graduated = 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of dto.promotions) {
+        const record = await tx.studentRecord.findFirst({
+          where: {
+            OR: [{ id: item.studentId }, { userId: item.studentId }],
+            ...(schoolId && { schoolId }),
+          },
+        });
+        if (!record) continue;
+
+        if (item.action === PromotionAction.PROMOTE && item.targetSectionId) {
+          await tx.studentRecord.update({
+            where: { id: record.id },
+            data: { currentSectionId: item.targetSectionId },
+          });
+          promoted++;
+        } else if (item.action === PromotionAction.REPEAT && item.targetSectionId) {
+          await tx.studentRecord.update({
+            where: { id: record.id },
+            data: { currentSectionId: item.targetSectionId },
+          });
+          repeated++;
+        } else if (item.action === PromotionAction.GRADUATE) {
+          await tx.user.update({
+            where: { id: record.userId },
+            data: { isActive: false },
+          });
+          graduated++;
+        }
+      }
+    });
+
+    return {
+      message: 'Student promotion processed successfully',
+      promoted,
+      repeated,
+      graduated,
+      total: promoted + repeated + graduated,
+    };
   }
 }

@@ -66,6 +66,7 @@ export class ResultsController {
     UserRole.PARENT,
     UserRole.STUDENT,
   )
+  @ABAC('OWN_STUDENTS', 'OWN_CHILDREN')
   getStudentResults(
     @Param('studentId') studentId: string,
     @Query('useUserId') useUserId?: string,

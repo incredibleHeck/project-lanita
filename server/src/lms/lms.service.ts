@@ -124,7 +124,11 @@ export class LmsService {
   }
 
   async findAllCourses() {
+    const schoolId = getTenantSchoolId();
     return this.prisma.course.findMany({
+      where: {
+        ...(schoolId && { schoolId }),
+      },
       include: {
         subject: true,
         academicYear: true,
@@ -137,7 +141,7 @@ export class LmsService {
 
   async findOneCourse(id: string) {
     const course = await this.prisma.course.findFirst({
-      where: { id },
+      where: { id, ...(getTenantSchoolId() && { schoolId: getTenantSchoolId() }) },
       include: {
         subject: true,
         academicYear: true,

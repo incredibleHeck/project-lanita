@@ -46,12 +46,14 @@ interface RecordPaymentDialogProps {
   invoice: Invoice | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onPaymentRecorded?: (paymentId: string) => void;
 }
 
 export function RecordPaymentDialog({
   invoice,
   open,
   onOpenChange,
+  onPaymentRecorded,
 }: RecordPaymentDialogProps) {
   const queryClient = useQueryClient();
   const remainingBalance = invoice?.balance ?? 0;
@@ -68,19 +70,23 @@ export function RecordPaymentDialog({
   const mutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
       if (!invoice) throw new Error("No invoice selected");
-      return api.post("/billing/payments", {
+      const res = await api.post("/billing/payments", {
         invoiceId: invoice.id,
         amount: data.amount,
         method: data.method,
         reference: data.reference || undefined,
       });
+      return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (resData) => {
       toast.success("Payment recorded successfully");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["billing-stats"] });
       form.reset();
       onOpenChange(false);
+      if (resData?.payment?.id && onPaymentRecorded) {
+        onPaymentRecorded(resData.payment.id);
+      }
     },
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || "Failed to record payment");
@@ -98,13 +104,7 @@ export function RecordPaymentDialog({
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      form.reset({
-        amount: 0,
-        method: "CASH",
-        reference: "",
-      });
-    } else if (invoice) {
+    if (newOpen && invoice) {
       form.reset({
         amount: invoice.balance,
         method: "CASH",
@@ -114,56 +114,53 @@ export function RecordPaymentDialog({
     onOpenChange(newOpen);
   };
 
-  if (!invoice) return null;
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
-            Recording payment for invoice {invoice.invoiceNumber}
+            Record an offline payment for invoice {invoice?.invoiceNumber}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-2 py-4 text-sm">
-          <div className="grid grid-cols-2 gap-2">
-            <span className="text-muted-foreground">Student:</span>
-            <span className="font-medium">{invoice.studentName}</span>
+        {invoice && (
+          <div className="bg-muted p-3 rounded-md space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Student:</span>
+              <span className="font-medium">{invoice.studentName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Admission No:</span>
+              <span>{invoice.admissionNumber}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total Invoiced:</span>
+              <span>{formatCurrency(invoice.totalAmount)}</span>
+            </div>
+            <div className="flex justify-between font-semibold">
+              <span className="text-muted-foreground">Remaining Balance:</span>
+              <span className="text-red-600">
+                {formatCurrency(invoice.balance)}
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span className="text-muted-foreground">Total Amount:</span>
-            <span>{formatCurrency(invoice.totalAmount)}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span className="text-muted-foreground">Already Paid:</span>
-            <span>{formatCurrency(invoice.amountPaid)}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <span className="text-muted-foreground">Remaining Balance:</span>
-            <span className="font-medium text-red-600">
-              {formatCurrency(remainingBalance)}
-            </span>
-          </div>
-        </div>
+        )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Payment Amount (GHS)</FormLabel>
+                  <FormLabel>Payment Amount</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
-                      min="0.01"
-                      max={remainingBalance}
-                      placeholder="Enter amount"
+                      placeholder="0.00"
                       {...field}
-                      value={typeof field.value === "number" ? field.value : ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -177,10 +174,13 @@ export function RecordPaymentDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payment Method</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select payment method" />
+                        <SelectValue placeholder="Select method" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -199,10 +199,10 @@ export function RecordPaymentDialog({
               name="reference"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reference (Optional)</FormLabel>
+                  <FormLabel>Reference / Notes (Optional)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., MoMo transaction ID"
+                      placeholder="e.g. Bank slip #, teller ref..."
                       {...field}
                     />
                   </FormControl>
@@ -211,7 +211,7 @@ export function RecordPaymentDialog({
               )}
             />
 
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"
@@ -220,7 +220,7 @@ export function RecordPaymentDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Processing..." : "Record Payment"}
+                {mutation.isPending ? "Recording..." : "Confirm Payment"}
               </Button>
             </DialogFooter>
           </form>

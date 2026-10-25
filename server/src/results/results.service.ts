@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateResultDto } from './dto/create-result.dto';
 import { Prisma } from '@prisma/client';
 import { RecordResultsDto } from './dto/record-results.dto';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
 @Injectable()
 export class ResultsService {
@@ -23,9 +24,13 @@ export class ResultsService {
   }
 
   async create(createResultDto: CreateResultDto) {
+    const schoolId = getTenantSchoolId();
     try {
       return await this.prisma.result.create({
-        data: createResultDto,
+        data: {
+          ...createResultDto,
+          ...(schoolId && { schoolId }),
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -40,8 +45,12 @@ export class ResultsService {
   }
 
   async findAll(filters: { studentId?: string; examId?: string; subjectId?: string }) {
+    const schoolId = getTenantSchoolId();
     return this.prisma.result.findMany({
-      where: filters,
+      where: {
+        ...filters,
+        ...(schoolId && { schoolId }),
+      },
       include: {
         student: {
           include: { user: { include: { profile: true } } },
@@ -53,8 +62,12 @@ export class ResultsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.result.findUnique({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.result.findFirst({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       include: {
         student: true,
         exam: true,
@@ -64,24 +77,36 @@ export class ResultsService {
   }
 
   async update(id: string, data: Partial<CreateResultDto>) {
-    return this.prisma.result.update({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.result.updateMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       data,
     });
   }
 
   async remove(id: string) {
-    return this.prisma.result.delete({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.result.deleteMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
     });
   }
 
   async recordBatch(recordResultsDto: RecordResultsDto) {
+    const schoolId = getTenantSchoolId();
     const { examId, subjectId, scores } = recordResultsDto;
 
     // Validate Exam
-    const exam = await this.prisma.exam.findUnique({
-      where: { id: examId },
+    const exam = await this.prisma.exam.findFirst({
+      where: {
+        id: examId,
+        ...(schoolId && { schoolId }),
+      },
     });
 
     if (!exam) {
@@ -97,7 +122,7 @@ export class ResultsService {
       }
     }
 
-    // Process concurrently
+    // Process concurrently in transaction
     await this.prisma.$transaction(
       scores.map((record) => {
         const grade = this.calculateGrade(record.score);
@@ -113,6 +138,7 @@ export class ResultsService {
             score: record.score,
             grade,
             remarks: record.remarks,
+            ...(schoolId && { schoolId }),
           },
           create: {
             studentId: record.studentId,
@@ -121,6 +147,7 @@ export class ResultsService {
             score: record.score,
             grade,
             remarks: record.remarks,
+            ...(schoolId && { schoolId }),
           },
         });
       }),
@@ -130,9 +157,11 @@ export class ResultsService {
   }
 
   async getStudentResults(studentId: string, useUserId = false) {
+    const schoolId = getTenantSchoolId();
     const where = useUserId
-      ? { student: { userId: studentId } }
-      : { studentId };
+      ? { student: { userId: studentId }, ...(schoolId && { schoolId }) }
+      : { studentId, ...(schoolId && { schoolId }) };
+
     const results = await this.prisma.result.findMany({
       where,
       include: {
@@ -145,7 +174,7 @@ export class ResultsService {
     });
 
     // Group by Exam
-    const grouped = {};
+    const grouped: Record<string, { exam: any; results: any[] }> = {};
     for (const result of results) {
       const examName = result.exam.name;
       if (!grouped[examName]) {

@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExamDto } from './dto/create-exam.dto';
+import { getTenantSchoolId } from '../common/tenant/tenant.context';
 
 @Injectable()
 export class ExamsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createExamDto: CreateExamDto) {
+    const schoolId = getTenantSchoolId();
     return this.prisma.exam.create({
       data: {
         name: createExamDto.name,
@@ -15,6 +17,7 @@ export class ExamsService {
         maxScore: createExamDto.maxScore ?? 100,
         academicYearId: createExamDto.academicYearId,
         termId: createExamDto.termId,
+        ...(schoolId && { schoolId }),
       },
       include: {
         academicYear: true,
@@ -24,7 +27,11 @@ export class ExamsService {
   }
 
   async findAll() {
+    const schoolId = getTenantSchoolId();
     return this.prisma.exam.findMany({
+      where: {
+        ...(schoolId && { schoolId }),
+      },
       orderBy: {
         startDate: 'desc',
       },
@@ -39,8 +46,12 @@ export class ExamsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.exam.findUnique({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.exam.findFirst({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       include: {
         academicYear: true,
         term: true,
@@ -59,8 +70,12 @@ export class ExamsService {
   }
 
   async update(id: string, data: Partial<CreateExamDto>) {
-    return this.prisma.exam.update({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.exam.updateMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
       data: {
         ...(data.name && { name: data.name }),
         ...(data.maxScore !== undefined && { maxScore: data.maxScore }),
@@ -69,16 +84,16 @@ export class ExamsService {
         ...(data.academicYearId && { academicYearId: data.academicYearId }),
         ...(data.termId !== undefined && { termId: data.termId }),
       },
-      include: {
-        academicYear: true,
-        term: true,
-      },
     });
   }
 
   async remove(id: string) {
-    return this.prisma.exam.delete({
-      where: { id },
+    const schoolId = getTenantSchoolId();
+    return this.prisma.exam.deleteMany({
+      where: {
+        id,
+        ...(schoolId && { schoolId }),
+      },
     });
   }
 }

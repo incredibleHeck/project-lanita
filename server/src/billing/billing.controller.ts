@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -10,7 +12,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UserRole, InvoiceStatus } from '@prisma/client';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -18,6 +20,8 @@ import { BillingService } from './billing.service';
 import { GenerateInvoicesDto } from './dto/generate-invoices.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { InitializePaystackDto } from './dto/initialize-paystack.dto';
+import { CreateFeeStructureDto } from './dto/create-fee-structure.dto';
+import { UpdateFeeStructureDto } from './dto/update-fee-structure.dto';
 
 @ApiTags('Billing')
 @ApiBearerAuth()
@@ -28,6 +32,7 @@ export class BillingController {
 
   @Post('invoices/generate')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Generate invoices in bulk for an academic term' })
   generateInvoices(@Body() dto: GenerateInvoicesDto) {
     return this.billingService.generateTermInvoices(dto);
   }
@@ -52,8 +57,43 @@ export class BillingController {
 
   @Post('payments')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Record an offline payment (cash, bank transfer, pos)' })
   recordPayment(@Body() dto: RecordPaymentDto) {
     return this.billingService.recordPayment(dto);
+  }
+
+  @Get('payments/:paymentId/receipt')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.TEACHER,
+    UserRole.PARENT,
+    UserRole.STUDENT,
+  )
+  @ApiOperation({ summary: 'Fetch printable receipt with breakdown and school branding' })
+  async getPaymentReceipt(
+    @Param('paymentId') paymentId: string,
+    @Request() req: { user: { sub: string; role: UserRole } },
+  ) {
+    const receipt = await this.billingService.getPaymentReceipt(paymentId);
+    if (req.user.role === UserRole.PARENT) {
+      const hasAccess = await this.billingService.verifyParentAccess(
+        req.user.sub,
+        receipt.student.id,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException("You can only view your children's receipts");
+      }
+    } else if (req.user.role === UserRole.STUDENT) {
+      const hasAccess = await this.billingService.verifyStudentAccess(
+        req.user.sub,
+        receipt.student.id,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException('You can only view your own receipts');
+      }
+    }
+    return receipt;
   }
 
   @Post('paystack/initialize')
@@ -150,5 +190,29 @@ export class BillingController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getFeeStructures(@Query('academicYearId') academicYearId?: string) {
     return this.billingService.getFeeStructures(academicYearId);
+  }
+
+  @Post('fee-structures')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a fee structure item (e.g., Tuition, PTA, Lab fee)' })
+  createFeeStructure(@Body() dto: CreateFeeStructureDto) {
+    return this.billingService.createFeeStructure(dto);
+  }
+
+  @Patch('fee-structures/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update an existing fee structure item' })
+  updateFeeStructure(
+    @Param('id') id: string,
+    @Body() dto: UpdateFeeStructureDto,
+  ) {
+    return this.billingService.updateFeeStructure(id, dto);
+  }
+
+  @Delete('fee-structures/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete a fee structure item' })
+  deleteFeeStructure(@Param('id') id: string) {
+    return this.billingService.deleteFeeStructure(id);
   }
 }

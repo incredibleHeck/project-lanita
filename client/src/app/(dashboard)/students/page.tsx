@@ -8,13 +8,14 @@ import { getColumns, Student } from "@/components/students/columns";
 import { DataTable } from "@/components/students/data-table";
 import { AddStudentSheet } from "@/components/students/add-student-sheet";
 import { EditStudentSheet } from "@/components/students/edit-student-sheet";
+import { PromoteStudentsDialog } from "@/components/students/promote-students-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { GraduationCap, X } from "lucide-react";
 
 interface StudentsResponse {
   data: Student[];
@@ -36,6 +37,7 @@ export default function StudentsPage() {
   const debouncedSearch = useDebounce(search, 500);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
 
   const columns = useMemo(
     () =>
@@ -76,9 +78,24 @@ export default function StudentsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Students</h1>
-        <AddStudentSheet />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Student Directory</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage student registrations, enrollments, section assignments, and promotions.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setPromoteDialogOpen(true)}
+          >
+            <GraduationCap className="h-4 w-4" />
+            Promote Students
+          </Button>
+          <AddStudentSheet />
+        </div>
       </div>
 
       <EditStudentSheet
@@ -88,6 +105,11 @@ export default function StudentsPage() {
           setEditSheetOpen(open);
           if (!open) setEditStudent(null);
         }}
+      />
+
+      <PromoteStudentsDialog
+        open={promoteDialogOpen}
+        onOpenChange={setPromoteDialogOpen}
       />
 
       {(classId || sectionId) && (
